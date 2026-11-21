@@ -20,6 +20,7 @@ export default defineConfig({
     proxy: {
       '/config.json': bridge,
       '/api': bridge,
+      '/media': bridge,
       '/ws': { target: bridge.replace('http', 'ws'), ws: true },
     },
   },

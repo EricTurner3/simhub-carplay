@@ -10,7 +10,7 @@ export type DriveState = 'driving' | 'parked';
  *
  * Auto mode derives a DriveState from telemetry:
  *   parked  <- not connected, game not running, game paused,
- *              or speed below threshold for `parkedAfterMs`
+ *              or speed below threshold for `parkedAfterMs` (unless it's null)
  *   driving <- speed at/above threshold while running and unpaused
  *
  * On a DriveState *transition* it moves between the two home screens
@@ -47,7 +47,8 @@ export class ViewState {
       [next, reason] = ['driving', 'moving'];
     } else {
       this.belowSince ??= now;
-      const stoppedLongEnough = now - this.belowSince >= this.cfg.parkedAfterMs;
+      const after = this.cfg.parkedAfterMs;
+      const stoppedLongEnough = after !== null && now - this.belowSince >= after;
       [next, reason] = stoppedLongEnough ? ['parked', 'stopped'] : [this.drive, 'slowing'];
     }
 

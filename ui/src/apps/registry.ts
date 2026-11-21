@@ -22,7 +22,7 @@ export const appById = (id: string) => APPS.find((a) => a.id === id);
 
 /** Does the active game provide everything this app needs? Reactive via t.has(). */
 export function isAvailable(app: AppModule, t: Telemetry): boolean {
-  return (app.requires ?? []).every((ch) => t.has(ch));
+  return (app.requires ?? []).every((ch) => t.has(ch)) && (app.available?.(t) ?? true);
 }
 
 export function availableApps(t: Telemetry): AppModule[] {

@@ -35,7 +35,7 @@
     justify-content: space-between;
     padding: 0.75rem 0.95rem 0.85rem;
     text-align: left;
-    background: linear-gradient(160deg, #2a241d, var(--card));
+    background: linear-gradient(160deg, rgba(255, 179, 64, 0.1), rgba(255, 179, 64, 0)), var(--card);
   }
   .head {
     display: flex;

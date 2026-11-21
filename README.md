@@ -172,7 +172,55 @@ Under the clock: a dot plus the game's short code (ATS, ETS2, AC…).
 - **Amber:** SimHub is connected but the game isn't running.
 - **Red:** no data path, meaning the bridge or SimHub is down. Hover or long-press shows the reason.
 
+## Vehicle controls (screen → game)
+
+The **Controls** app appears for any game whose profile has a `controls` section (ATS/ETS2 today).
+It has headlights, high beam, hazards, beacon, turn signals, parking brake, cruise, diff lock,
+lift axle, ignition, engine, wipers, and a hold-to-honk horn. Toggles show the **game's real
+state**, so a tap shows "…" until the game confirms. "No response" usually means the SimHub
+mapping below is missing.
+
+How a tap reaches the game:
+
+```
+tap on screen ──WS {t:"control"}──► bridge ──trigger-input-pressed/released carplay.<id>──► Property Server
+   ──► SimHub "PropertyServerPlugin.carplay.<id>" ──Keyboard emulation──► key press in the game
+```
+
+**One-time setup in SimHub** (per control):
+1. *Controls and events → Keyboard emulation → Add mapping → Click to configure.* In the "Pick a
+   control" dialog, if **Property Server** shows *Disabled*, click **Enable**.
+2. With the dialog on "Waiting for input", tap the control on the screen, or run
+   `curl -X POST http://localhost:8099/api/control/hazards` on the PC. SimHub shows
+   `PropertyServerPlugin.carplay.hazards`.
+3. Set **Press type: During**. The bridge holds the input for `controls.tapMs`, and holds the horn
+   for as long as your finger is down. Then **Save**.
+4. **Add key**: press the key the game uses for that action, e.g. ATS defaults: hazards `F`,
+   headlights `L`, high beam `K`. Use whatever your own bindings are.
+
+Control ids are the keys of `controls` in [games/scs-trucks.json](games/scs-trucks.json), and the
+SimHub input name is `controls.inputPrefix` + id (`carplay.` by default). The headlights are a
+`cycle` control: the game steps off → parking → on with one key, so choosing "Off" from "On"
+sends two taps, `controls.gapMs` apart. To add a control, add an entry with a state channel. Known
+ids get an icon from `ui/src/apps/controls/catalog.ts`, and others get a generic one.
+
+Safety: the bridge only fires inputs for controls in the active profile, and it builds the input
+name itself, so a client can't trigger arbitrary SimHub inputs. A held control is released when
+the screen disconnects or the game changes. If the bridge listens on your LAN (below), anyone on
+that network can operate these controls.
+
 ## Running on the rig display
+
+### Raspberry Pi (or any other device on the network)
+
+The bridge runs on the gaming PC next to SimHub. The display device only needs a browser:
+1. In `config.json`, set `"bridge": { "host": "0.0.0.0", … }` and allow TCP 8099 through the
+   Windows firewall.
+2. On the Pi, open `http://<PC-IP>:8099` in kiosk Chromium, or point a SimHub remote dashboard's
+   web view component at it.
+3. The wheel is plugged into the PC, so the Pi's browser can't see it through the Gamepad API.
+   Touch works. Wheel-button navigation from the Pi needs the backend input path
+   (`/api/input/<action>`, or wheel buttons read through SimHub, which is planned).
 
 ### Edge kiosk on the second screen
 
@@ -242,13 +290,30 @@ this with your hardware yet. The UI is built so this doesn't block you:
 `ui.autoSwitch` drives the view state machine (`ui/src/lib/viewState.svelte.ts`):
 
 - **parked**: telemetry disconnected, game not running, game paused, or speed below
-  `parkedBelowKmh` for `parkedAfterMs`
+  `parkedBelowKmh` for `parkedAfterMs` (set it to `null` so sitting still, e.g. at a light, never
+  counts as parked)
 - **driving**: moving at or above the threshold
 
 When the state *changes*, the UI moves between the two home screens: driving → split view,
 parked → app grid. An open app is left alone. A manual toggle holds until the next change, so you
 can look at the grid while driving and it won't snap back. Set `enabled: false` to switch views
 only manually.
+
+## Now Playing
+
+`media.source` in config.json picks where track info comes from:
+
+- **`simhub`** (default): SimHub's MediaInfo plugin. Title and artist only, no art, progress
+  or working buttons.
+- **`windows`**: the bridge reads the Windows media session itself, the same data as the
+  volume flyout. You get album art, album, progress, play/pause state, and working
+  previous / play-pause / next buttons. It works with any player that reports to Windows
+  (Spotify, Apple Music, browsers, …), though some players leave out position or art.
+
+With `windows`, the bridge starts a hidden Windows PowerShell 5.1 helper
+([bridge/src/media/windowsMedia.ps1](bridge/src/media/windowsMedia.ps1)) when it starts, and
+restarts it if it exits; it exits when the bridge does. It polls every `media.pollMs` and
+replaces the game profiles' `media.*` mappings. Nothing extra to install or run.
 
 ## WebSocket protocol (v1)
 
@@ -263,6 +328,13 @@ by channel name:
 {"t":"snapshot","ts":1700000000000,"d":{"speedKmh":0,"gear":"N", ...}}  // full state on connect
 {"t":"delta","ts":1700000000033,"d":{"speedKmh":87.4,"rpm":5120}}       // changed channels only
 {"t":"input","action":"ok"}                             // navigation from the backend
+{"t":"config","ui":{...}}                               // UI settings changed (Settings app)
+
+// client -> server
+{"t":"control","id":"hazards","action":"tap"}           // also "press"/"release" (momentary), "count" for cycles
+{"t":"media","action":"playPause"}                     // also "next" / "previous" (media.source "windows")
+{"t":"settings","patch":{"units":"mph","appearance":{"background":"aurora"}}}
+                                                        // validated, saved to config.json, echoed to all as "config"
 ```
 
 The bridge sends deltas at `bridge.broadcastHz` (default 30) and only when something changed.
@@ -280,12 +352,23 @@ messages derived from `games/*.json`.
 | `propertyServer.*` | Property Server address and reconnect delay |
 | `mock.game` | SimHub game code the mock pretends to be (`AssettoCorsa`, `ATS`…); `--game` overrides it |
 | `mock.*` | Mock update rate and driving/parked phase lengths |
+| `controls.inputPrefix` | SimHub input name prefix for vehicle controls (`carplay.` → `PropertyServerPlugin.carplay.hazards`) |
+| `media.source` | `simhub` or `windows` (see [Now Playing](#now-playing)) |
+| `media.pollMs` | How often the Windows media helper checks the session |
+| `controls.tapMs` / `gapMs` | How long a tap holds the input; pause between taps of a cycle control |
 | `ui.units` | `auto` (use the game profile's units, else km/h), `kmh` or `mph` |
 | `ui.interpolate` | Channels smoothed on the render loop: `linear`, or `wrap` for 0..1 values like track position |
 | `ui.autoSwitch` | See above |
 | `ui.input` | Keyboard and gamepad mapping |
+| `ui.appearance.background` | Background preset (`black`, `graphite`, `midnight`, `aurora`, `sunset`, `ocean`, `forest`, `crimson`) or `custom` |
+| `ui.appearance.custom` | Custom background gradient: `angle` (degrees), `from` / `to` (`#rrggbb`) |
+| `ui.appearance.glass` | Frosted-glass cards (translucent + blur); turn off if the display's GPU struggles |
+| `ui.appearance.iconScale` | App-grid icon size, `0.6`–`2` (`1` = default); fewer icons fit per page as it grows |
 
-The bridge reads the config once at startup, so restart it after edits. To use a different file,
+`ui.units` and `ui.appearance` can also be changed from the **Settings** app on the screen. The
+bridge saves those keys back into this file (leaving the rest as written) and pushes the change
+to every connected screen. For anything else, the bridge reads the config once at startup, so
+restart it after edits. To use a different file,
 pass `--config path\to\file.json` or set `CARPLAY_CONFIG`.
 
 ## Project layout
@@ -298,7 +381,8 @@ shared/src/games.ts         game profile + ProfileInfo types
 shared/src/config.ts        config.json types
 bridge/src/index.ts         entry: picks the source, switches profiles when the game changes
 bridge/src/games.ts         loads/merges game profiles (extends, null = remove)
-bridge/src/server.ts        HTTP (static UI, /config.json, /api/input) + WebSocket
+bridge/src/server.ts        HTTP (static UI, /config.json, /api/input, /api/control) + WebSocket
+bridge/src/controls.ts      vehicle controls -> SimHub input triggers (allow-list, tap/hold, queueing)
 bridge/src/store.ts         latest values + dirty set -> deltas
 bridge/src/sources/mock.ts            synthetic laps, racing + truck channels
 bridge/src/sources/propertyServer.ts  TCP client for the Property Server (diffed resubscribes)

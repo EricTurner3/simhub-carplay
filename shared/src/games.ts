@@ -6,6 +6,46 @@
 
 export type Units = 'kmh' | 'mph';
 
+/**
+ * A vehicle control the UI can operate. The bridge fires a SimHub input trigger
+ * (Property Server `trigger-input-pressed/released`, named `<inputPrefix><id>`
+ * unless `input` is set); in SimHub that input is mapped to a key via
+ * Controls and events -> Keyboard emulation.
+ *
+ * - toggle:    one tap flips it; `state` is the channel showing whether it's on
+ * - momentary: held while the button is held (horn); no state
+ * - cycle:     one key steps through `steps` (e.g. lights off -> parking -> low);
+ *              the current step is the last one whose `state` is on
+ */
+export interface ControlDef {
+  kind: 'toggle' | 'momentary' | 'cycle';
+  label?: string;
+  state?: string;
+  steps?: { label: string; state?: string }[];
+  /** Override the SimHub input name (default `<controls.inputPrefix><id>`). */
+  input?: string;
+}
+
+export type ControlInfo = ControlDef & { id: string };
+
+/**
+ * One candidate source for a switched channel. A channel mapped to a list of
+ * cases takes its value from the first case whose `when` channel is on (a case
+ * without `when` always matches). `prop: null` means "no value" for that case.
+ * `when` must name a plain (non-switched) channel of the same profile.
+ *
+ *   "job.cargo": [
+ *     { "when": "job.onCarJob", "prop": "...CarJobValues.CargoValues.Name" },
+ *     { "prop": "...JobValues.CargoValues.Name" }
+ *   ]
+ */
+export interface ChannelCase {
+  when?: string;
+  prop: string | null;
+}
+
+export type ChannelMapping = string | ChannelCase[];
+
 export interface GameProfileFile {
   id: string;
   name?: string;
@@ -19,7 +59,9 @@ export interface GameProfileFile {
   abstract?: boolean;
   units?: Units;
   currency?: string;
-  channels?: Record<string, string | null>;
+  channels?: Record<string, ChannelMapping | null>;
+  /** Controls this game supports (null removes an inherited one). */
+  controls?: Record<string, ControlDef | null>;
 }
 
 /** What the UI learns about the active game. */
@@ -33,4 +75,6 @@ export interface ProfileInfo {
   currency?: string;
   /** Channels this game provides. Apps use it to decide whether they're available. */
   channels: string[];
+  /** Controls the UI may operate for this game, in display order. */
+  controls: ControlInfo[];
 }

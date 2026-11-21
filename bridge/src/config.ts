@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { AppConfig, SourceKind } from '@simhub-carplay/shared';
+import { DEFAULT_APPEARANCE, DEFAULT_MEDIA, type AppConfig, type SourceKind } from '@simhub-carplay/shared';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const repoRoot = resolve(here, '../..');
@@ -30,6 +30,14 @@ export function loadConfig(argv = process.argv.slice(2)): { config: AppConfig; p
     if (source !== 'mock' && source !== 'propertyServer') throw new Error(`Unknown --source "${source}"`);
     config.bridge.source = source as SourceKind;
   }
+  // Sections added after the first release: fill defaults so older config files keep working.
+  const partial = config as Partial<AppConfig> & Pick<AppConfig, 'mock'>;
+  config.controls = { inputPrefix: 'carplay.', tapMs: 120, gapMs: 300, ...partial.controls };
+  config.mock = { ...config.mock, game: partial.mock.game ?? 'AssettoCorsa' };
+  config.media = { ...DEFAULT_MEDIA, ...partial.media };
+  const appearance = { ...DEFAULT_APPEARANCE, ...config.ui.appearance };
+  config.ui.appearance = { ...appearance, custom: { ...DEFAULT_APPEARANCE.custom, ...appearance.custom } };
+
   const game = arg('--game');
   if (game) config.mock.game = game;
   return { config, path };

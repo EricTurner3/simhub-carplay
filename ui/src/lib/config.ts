@@ -1,4 +1,4 @@
-import type { ClientConfig } from '@simhub-carplay/shared';
+import { DEFAULT_APPEARANCE, type ClientConfig } from '@simhub-carplay/shared';
 
 const params = new URLSearchParams(location.search);
 
@@ -14,23 +14,36 @@ export function wsUrl(): string {
   return `${proto}//${location.host}/ws`;
 }
 
-function configUrl(): string {
+/** URL of a bridge HTTP path (e.g. "media/art?v=3"): same origin, or the ?ws= bridge's. */
+export function bridgeUrl(path: string): string {
   const ws = params.get('ws');
-  if (!ws) return 'config.json';
+  if (!ws) return path;
   const u = new URL(ws);
   u.protocol = u.protocol === 'wss:' ? 'https:' : 'http:';
-  u.pathname = '/config.json';
-  return u.toString();
+  return new URL(path, `${u.origin}/`).toString();
 }
 
+const configUrl = () => bridgeUrl('config.json');
+
 export const debugFromUrl = params.has('debug');
+
+/**
+ * Fill settings the bridge didn't send. A bridge started before a setting was
+ * added (or an older backend) omits it, and e.g. a missing icon scale would
+ * leave the app grid with NaN columns.
+ */
+function withDefaults(cfg: ClientConfig): ClientConfig {
+  const a = { ...DEFAULT_APPEARANCE, ...cfg.ui.appearance };
+  cfg.ui.appearance = { ...a, custom: { ...DEFAULT_APPEARANCE.custom, ...a.custom } };
+  return cfg;
+}
 
 /** Fetch config from the bridge, retrying until it answers. */
 export async function loadConfig(onWaiting: (attempt: number) => void): Promise<ClientConfig> {
   for (let attempt = 1; ; attempt++) {
     try {
       const res = await fetch(configUrl(), { cache: 'no-store' });
-      if (res.ok) return (await res.json()) as ClientConfig;
+      if (res.ok) return withDefaults((await res.json()) as ClientConfig);
     } catch {
       /* bridge not up yet */
     }

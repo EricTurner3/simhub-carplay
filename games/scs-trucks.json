@@ -25,20 +25,63 @@
     "tyrePressureUnit": null,
     "roadTemp": null,
 
-    "job.onJob": "DataCorePlugin.GameRawData.SpecialEventsValues.OnJob",
-    "job.special": "DataCorePlugin.GameRawData.JobValues.SpecialJob",
-    "job.cargo": "DataCorePlugin.GameRawData.JobValues.CargoValues.Name",
-    "job.cargoMassKg": "DataCorePlugin.GameRawData.JobValues.CargoValues.Mass",
-    "job.cargoDamage": "DataCorePlugin.GameRawData.JobValues.CargoValues.CargoDamage",
-    "job.cargoLoaded": "DataCorePlugin.GameRawData.JobValues.CargoLoaded",
-    "job.sourceCity": "DataCorePlugin.GameRawData.JobValues.CitySource",
-    "job.sourceCompany": "DataCorePlugin.GameRawData.JobValues.CompanySource",
-    "job.destinationCity": "DataCorePlugin.GameRawData.JobValues.CityDestination",
-    "job.destinationCompany": "DataCorePlugin.GameRawData.JobValues.CompanyDestination",
-    "job.income": "DataCorePlugin.GameRawData.JobValues.Income",
-    "job.plannedDistanceKm": "DataCorePlugin.GameRawData.JobValues.PlannedDistanceKm",
-    "job.remainingMinutes": "DataCorePlugin.GameRawData.JobValues.RemainingDeliveryTime.Minutes",
-    "job.deadlineMinutes": "DataCorePlugin.GameRawData.JobValues.DeliveryTime.Minutes",
+    "job.onCarJob": "DataCorePlugin.GameRawData.SpecialEventsValues.OnCarJob",
+    "job.onJob": [
+      { "when": "job.onCarJob", "prop": "DataCorePlugin.GameRawData.SpecialEventsValues.OnCarJob" },
+      { "prop": "DataCorePlugin.GameRawData.SpecialEventsValues.OnJob" }
+    ],
+    "job.special": [
+      { "when": "job.onCarJob", "prop": null },
+      { "prop": "DataCorePlugin.GameRawData.JobValues.SpecialJob" }
+    ],
+    "job.cargo": [
+      { "when": "job.onCarJob", "prop": "DataCorePlugin.GameRawData.CarJobValues.CargoValues.Name" },
+      { "prop": "DataCorePlugin.GameRawData.JobValues.CargoValues.Name" }
+    ],
+    "job.cargoMassKg": [
+      { "when": "job.onCarJob", "prop": null },
+      { "prop": "DataCorePlugin.GameRawData.JobValues.CargoValues.Mass" }
+    ],
+    "job.cargoDamage": [
+      { "when": "job.onCarJob", "prop": null },
+      { "prop": "DataCorePlugin.GameRawData.JobValues.CargoValues.CargoDamage" }
+    ],
+    "job.cargoLoaded": [
+      { "when": "job.onCarJob", "prop": null },
+      { "prop": "DataCorePlugin.GameRawData.JobValues.CargoLoaded" }
+    ],
+    "job.sourceCity": [
+      { "when": "job.onCarJob", "prop": "DataCorePlugin.GameRawData.CarJobValues.CitySource" },
+      { "prop": "DataCorePlugin.GameRawData.JobValues.CitySource" }
+    ],
+    "job.sourceCompany": [
+      { "when": "job.onCarJob", "prop": "DataCorePlugin.GameRawData.CarJobValues.CompanySource" },
+      { "prop": "DataCorePlugin.GameRawData.JobValues.CompanySource" }
+    ],
+    "job.destinationCity": [
+      { "when": "job.onCarJob", "prop": "DataCorePlugin.GameRawData.CarJobValues.CityDestination" },
+      { "prop": "DataCorePlugin.GameRawData.JobValues.CityDestination" }
+    ],
+    "job.destinationCompany": [
+      { "when": "job.onCarJob", "prop": "DataCorePlugin.GameRawData.CarJobValues.CompanyDestination" },
+      { "prop": "DataCorePlugin.GameRawData.JobValues.CompanyDestination" }
+    ],
+    "job.income": [
+      { "when": "job.onCarJob", "prop": "DataCorePlugin.GameRawData.CarJobValues.Income" },
+      { "prop": "DataCorePlugin.GameRawData.JobValues.Income" }
+    ],
+    "job.plannedDistanceKm": [
+      { "when": "job.onCarJob", "prop": "DataCorePlugin.GameRawData.CarJobValues.PlannedDistanceKm" },
+      { "prop": "DataCorePlugin.GameRawData.JobValues.PlannedDistanceKm" }
+    ],
+    "job.remainingMinutes": [
+      { "when": "job.onCarJob", "prop": "DataCorePlugin.GameRawData.CarJobValues.RemainingDeliveryTime.Minutes" },
+      { "prop": "DataCorePlugin.GameRawData.JobValues.RemainingDeliveryTime.Minutes" }
+    ],
+    "job.deadlineMinutes": [
+      { "when": "job.onCarJob", "prop": "DataCorePlugin.GameRawData.CarJobValues.DeliveryTime.Minutes" },
+      { "prop": "DataCorePlugin.GameRawData.JobValues.DeliveryTime.Minutes" }
+    ],
 
     "nav.distanceM": "DataCorePlugin.GameRawData.NavigationValues.NavigationDistance",
     "nav.timeSec": "DataCorePlugin.GameRawData.NavigationValues.NavigationTimeSeconds",
@@ -71,6 +114,42 @@
     "truck.damageEngine": "DataCorePlugin.GameRawData.TruckValues.CurrentValues.DamageValues.Engine",
     "truck.damageTransmission": "DataCorePlugin.GameRawData.TruckValues.CurrentValues.DamageValues.Transmission",
     "truck.damageWheels": "DataCorePlugin.GameRawData.TruckValues.CurrentValues.DamageValues.WheelsAvg",
-    "truck.trailerAttached": "DataCorePlugin.GameRawData.TrailerValues01.Attached"
+    "truck.trailerAttached": "DataCorePlugin.GameRawData.TrailerValues01.Attached",
+
+    "truck.lightsParking": "DataCorePlugin.GameRawData.TruckValues.CurrentValues.LightsValues.Parking",
+    "truck.lightsLow": "DataCorePlugin.GameRawData.TruckValues.CurrentValues.LightsValues.BeamLow",
+    "truck.lightsHigh": "DataCorePlugin.GameRawData.TruckValues.CurrentValues.LightsValues.BeamHigh",
+    "truck.hazards": "DataCorePlugin.GameRawData.TruckValues.CurrentValues.LightsValues.HazardWarningLights",
+    "truck.beacon": "DataCorePlugin.GameRawData.TruckValues.CurrentValues.LightsValues.Beacon",
+    "truck.blinkerLeft": "DataCorePlugin.GameRawData.TruckValues.CurrentValues.LightsValues.BlinkerLeftActive",
+    "truck.blinkerRight": "DataCorePlugin.GameRawData.TruckValues.CurrentValues.LightsValues.BlinkerRightActive",
+    "truck.engineOn": "DataCorePlugin.GameRawData.TruckValues.CurrentValues.EngineEnabled",
+    "truck.electricOn": "DataCorePlugin.GameRawData.TruckValues.CurrentValues.ElectricEnabled",
+    "truck.wipers": "DataCorePlugin.GameRawData.TruckValues.CurrentValues.DashboardValues.Wipers"
+  },
+
+  "controls": {
+    "lights": {
+      "kind": "cycle",
+      "label": "Headlights",
+      "steps": [
+        { "label": "Off" },
+        { "label": "Parking", "state": "truck.lightsParking" },
+        { "label": "On", "state": "truck.lightsLow" }
+      ]
+    },
+    "highBeam": { "kind": "toggle", "label": "High beam", "state": "truck.lightsHigh" },
+    "hazards": { "kind": "toggle", "label": "Hazards", "state": "truck.hazards" },
+    "beacon": { "kind": "toggle", "label": "Beacon", "state": "truck.beacon" },
+    "blinkerLeft": { "kind": "toggle", "label": "Left signal", "state": "truck.blinkerLeft" },
+    "blinkerRight": { "kind": "toggle", "label": "Right signal", "state": "truck.blinkerRight" },
+    "parkingBrake": { "kind": "toggle", "label": "Parking brake", "state": "truck.parkingBrake" },
+    "cruise": { "kind": "toggle", "label": "Cruise control", "state": "truck.cruise" },
+    "diffLock": { "kind": "toggle", "label": "Diff lock", "state": "truck.diffLock" },
+    "liftAxle": { "kind": "toggle", "label": "Lift axle", "state": "truck.liftAxle" },
+    "electric": { "kind": "toggle", "label": "Ignition", "state": "truck.electricOn" },
+    "engine": { "kind": "toggle", "label": "Engine", "state": "truck.engineOn" },
+    "wipers": { "kind": "toggle", "label": "Wipers", "state": "truck.wipers" },
+    "horn": { "kind": "momentary", "label": "Horn" }
   }
 }

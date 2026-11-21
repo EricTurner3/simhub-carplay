@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
-  import type { ClientConfig } from '@simhub-carplay/shared';
+  import type { ClientConfig, SettingsPatch, UiConfig } from '@simhub-carplay/shared';
   import { Telemetry } from './lib/telemetry.svelte.ts';
   import { ViewState } from './lib/viewState.svelte.ts';
   import { InputManager, type Action, type InputSource } from './lib/input.ts';
@@ -9,6 +9,7 @@
   import { debugFromUrl, wsUrl } from './lib/config.ts';
   import { setAppContext, type AppContext, type UiFlags } from './lib/context.ts';
   import { viewIn, viewOut } from './lib/transitions.ts';
+  import { applyAppearance } from './lib/appearance.ts';
   import Dock from './components/Dock.svelte';
   import DebugOverlay from './components/DebugOverlay.svelte';
   import SplitView from './views/SplitView.svelte';
@@ -16,14 +17,26 @@
   import AppScreen from './views/AppScreen.svelte';
 
   let props: { cfg: ClientConfig } = $props();
-  // Config is fixed for the lifetime of the page.
-  const cfg = untrack(() => props.cfg);
+  // Loaded once per page; only the Settings-editable parts (units, appearance) change later.
+  const cfg = $state(untrack(() => props.cfg));
 
   const telemetry = new Telemetry(wsUrl(), cfg.ui.interpolate);
   const view = new ViewState(cfg.ui.autoSwitch);
   const ui: UiFlags = $state({ knob: false, debug: debugFromUrl, lastAction: '' });
   const units = () => (cfg.ui.units === 'auto' ? (telemetry.profile?.units ?? 'kmh') : cfg.ui.units);
-  const ctx: AppContext = { cfg, telemetry, view, ui, units, nav: { edge: null } };
+  function adopt(next: Pick<UiConfig, 'units'> & Pick<SettingsPatch, 'appearance'>) {
+    cfg.ui.units = next.units;
+    if (next.appearance) {
+      const { custom, ...rest } = next.appearance;
+      Object.assign(cfg.ui.appearance, rest);
+      if (custom) Object.assign(cfg.ui.appearance.custom, custom);
+    }
+  }
+  function updateSettings(patch: SettingsPatch): boolean {
+    adopt({ units: patch.units ?? cfg.ui.units, appearance: patch.appearance });
+    return telemetry.sendSettings(patch);
+  }
+  const ctx: AppContext = { cfg, telemetry, view, ui, units, updateSettings, nav: { edge: null } };
   setAppContext(ctx);
 
   let shell: HTMLElement;
@@ -82,9 +95,12 @@
     });
   });
 
+  $effect(() => applyAppearance(cfg.ui.appearance));
+
   onMount(() => {
     telemetry.connect();
     const offInput = telemetry.onInput((a) => handle(a, 'remote'));
+    const offConfig = telemetry.onConfig(adopt);
     const offFrame = onFrame((now) => {
       input.poll(now);
       view.update(now, telemetry);
@@ -93,6 +109,7 @@
     window.addEventListener('pointerdown', onPointer, { capture: true });
     return () => {
       offInput();
+      offConfig();
       offFrame();
       window.removeEventListener('pointerdown', onPointer, { capture: true });
     };
@@ -141,20 +158,22 @@
   .shell {
     height: 100%;
     display: flex;
-    background: var(--bg);
+    background: var(--bg-image);
   }
   .stage {
     position: relative;
     flex: 1;
     min-width: 0;
     container: stage / size;
+    margin-left: var(--gap);
   }
   .layer {
     position: absolute;
     inset: 0;
     padding: var(--gap) var(--gap) var(--gap) 0;
     transform-origin: 50% 50%;
-    will-change: transform, opacity;
+    /* No will-change here: opacity would make this a backdrop root, and the
+       glass cards inside would blur the empty layer instead of the background. */
   }
   .banner {
     position: absolute;

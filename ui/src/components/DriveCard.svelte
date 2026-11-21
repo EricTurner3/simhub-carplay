@@ -82,7 +82,7 @@
     flex-direction: column;
     padding: 0.75rem 0.95rem 0.85rem;
     text-align: left;
-    background: linear-gradient(160deg, #222227, var(--card));
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0)), var(--card);
   }
   .head {
     display: flex;

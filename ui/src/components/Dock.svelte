@@ -77,7 +77,9 @@
     align-items: center;
     padding: 0.9rem 0 0.8rem;
     gap: 0.8rem;
-    background: linear-gradient(90deg, #121215, #0b0b0d);
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: var(--glass);
+    -webkit-backdrop-filter: var(--glass);
   }
   .top {
     display: flex;

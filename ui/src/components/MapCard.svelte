@@ -210,7 +210,10 @@
     display: block;
     width: 100%;
     height: 100%;
+    /* The map stays solid: it's a picture of its own, not a glass panel. */
     background: radial-gradient(120% 90% at 50% 40%, #17181c, #0e0f12);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     text-align: left;
   }
   canvas {

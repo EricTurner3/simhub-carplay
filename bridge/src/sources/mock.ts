@@ -49,6 +49,9 @@ export class MockSource implements TelemetrySource {
   private fuel = 62; // litres
   private routeLeftM = 412_000; // truck job: metres to destination
   private gameMinutes = 3 * 1440 + 8 * 60 + 15; // Thu 08:15
+  // Vehicle controls operated from the UI (see control()).
+  private lightStep = 2; // 0 off, 1 parking, 2 low beam
+  private toggles: Record<string, boolean> = { electric: true, engine: true, liftAxle: true };
 
   constructor(private cfg: AppConfig['mock']) {
     this.phaseT = 2; // start rolling soon after launch
@@ -69,6 +72,16 @@ export class MockSource implements TelemetrySource {
 
   setProperties(): void {
     /* the mock emits channels directly */
+  }
+
+  /** Pretend the game reacted: flip the matching state a moment after the key goes down. */
+  control(id: string, _input: string, down: boolean): boolean {
+    if (!down) return true;
+    setTimeout(() => {
+      if (id === 'lights') this.lightStep = (this.lightStep + 1) % 3;
+      else this.toggles[id] = !this.toggles[id];
+    }, 150);
+    return true;
   }
 
   private step(dt: number): void {
@@ -236,12 +249,26 @@ export class MockSource implements TelemetrySource {
     set('truck.airPressure', r1(118 + wave(17) * 6));
     set('truck.airPressureWarning', false);
     set('truck.brakeTemp', r1(45 + load * 60));
-    set('truck.parkingBrake', this.phase === 'parked');
+    set('truck.parkingBrake', this.phase === 'parked' || !!this.toggles.parkingBrake);
     set('truck.retarder', this.phase === 'stopping' && this.v > 0 ? 2 : 0);
     set('truck.retarderSteps', 3);
-    set('truck.diffLock', false);
-    set('truck.liftAxle', true);
-    set('truck.cruise', this.phase === 'driving' && kmh > 80);
+    set('truck.diffLock', !!this.toggles.diffLock);
+    set('truck.liftAxle', !!this.toggles.liftAxle);
+    set('truck.cruise', !!this.toggles.cruise);
+    set('truck.lightsParking', this.lightStep >= 1);
+    set('truck.lightsLow', this.lightStep === 2);
+    for (const [id, ch] of [
+      ['highBeam', 'truck.lightsHigh'],
+      ['hazards', 'truck.hazards'],
+      ['beacon', 'truck.beacon'],
+      ['blinkerLeft', 'truck.blinkerLeft'],
+      ['blinkerRight', 'truck.blinkerRight'],
+      ['engine', 'truck.engineOn'],
+      ['electric', 'truck.electricOn'],
+      ['wipers', 'truck.wipers'],
+    ]) {
+      set(ch, !!this.toggles[id]);
+    }
     set('truck.cruiseKph', 96);
     set('truck.batteryVoltage', 13.8);
     set('truck.damageCabin', 0.02);

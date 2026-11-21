@@ -1,5 +1,5 @@
 import { getContext, setContext } from 'svelte';
-import type { ClientConfig, Units } from '@simhub-carplay/shared';
+import type { ClientConfig, SettingsPatch, Units } from '@simhub-carplay/shared';
 import type { Telemetry } from './telemetry.svelte.ts';
 import type { ViewState } from './viewState.svelte.ts';
 import type { Dir } from './focus.ts';
@@ -18,6 +18,11 @@ export interface AppContext {
   ui: UiFlags;
   /** Display units: config.ui.units, or the game profile's when that's "auto". Reactive. */
   units: () => Units;
+  /**
+   * Change runtime settings (units, appearance): applied here immediately, then
+   * saved by the bridge and pushed to every screen. Returns false if not connected.
+   */
+  updateSettings: (patch: SettingsPatch) => boolean;
   /**
    * Called when focus can't move further in a direction. The active view can
    * claim it (e.g. the grid turns the page). Return true if handled.

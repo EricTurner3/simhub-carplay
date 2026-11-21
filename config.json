@@ -1,6 +1,6 @@
 {
   "bridge": {
-    "host": "127.0.0.1",
+    "host": "0.0.0.0",
     "port": 8099,
     "source": "propertyServer",
     "broadcastHz": 30
@@ -19,8 +19,19 @@
     "parkedSeconds": 15
   },
 
+  "controls": {
+    "inputPrefix": "carplay.",
+    "tapMs": 120,
+    "gapMs": 300
+  },
+
+  "media": {
+    "source": "windows",
+    "pollMs": 1000
+  },
+
   "ui": {
-    "units": "auto",
+    "units": "mph",
     "interpolate": {
       "speedKmh": "linear",
       "rpm": "linear",
@@ -29,7 +40,7 @@
     "autoSwitch": {
       "enabled": true,
       "parkedBelowKmh": 3,
-      "parkedAfterMs": 2500
+      "parkedAfterMs": null
     },
     "input": {
       "keyboard": {
@@ -59,6 +70,12 @@
         "repeatDelayMs": 400,
         "repeatRateMs": 120
       }
+    },
+    "appearance": {
+      "background": "sunset",
+      "custom": { "angle": 160, "from": "#1d2440", "to": "#05060a" },
+      "glass": true,
+      "iconScale": 1.3
     }
   }
 }

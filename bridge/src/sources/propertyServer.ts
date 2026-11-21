@@ -57,6 +57,17 @@ export class PropertyServerSource implements TelemetrySource {
     }
   }
 
+  /**
+   * Fires a SimHub input as "PropertyServerPlugin.<input>". Map it in SimHub under
+   * Controls and events -> Keyboard emulation (press type "During" mirrors down/up).
+   */
+  control(_id: string, input: string, down: boolean): boolean {
+    const socket = this.socket;
+    if (!socket || socket.destroyed || socket.connecting) return false;
+    socket.write(`${down ? 'trigger-input-pressed' : 'trigger-input-released'} ${input}\r\n`);
+    return true;
+  }
+
   private connect(): void {
     const { host, port } = this.cfg;
     this.sink.status('connecting', `${host}:${port}`);
@@ -120,8 +131,18 @@ export function parseValue(type: string, raw: string): ChannelValue {
     case 'timespan':
       return parseTimeSpan(raw);
     default:
-      return raw;
+      return decodeString(raw);
   }
+}
+
+/**
+ * Property Server sends strings it can't put on the line as-is (non-ASCII, e.g.
+ * the em dash in "Foo Fighters — Wasting Light") as "{base64}<UTF-8 bytes>".
+ */
+function decodeString(raw: string): string {
+  const prefix = '{base64}';
+  if (!raw.startsWith(prefix)) return raw;
+  return Buffer.from(raw.slice(prefix.length), 'base64').toString('utf8');
 }
 
 /** .NET TimeSpan "[-][d.]hh:mm:ss[.fffffff]" -> seconds. */

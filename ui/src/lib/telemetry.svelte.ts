@@ -2,10 +2,16 @@ import {
   PROTOCOL_VERSION,
   type ChannelMap,
   type ChannelValue,
+  type ControlMsg,
   type InputAction,
   type InterpolationKind,
+  type MediaAction,
+  type MediaMsg,
   type ProfileInfo,
   type ServerMessage,
+  type SettingsMsg,
+  type SettingsPatch,
+  type UiConfig,
   type StatusMsg,
 } from '@simhub-carplay/shared';
 
@@ -43,6 +49,7 @@ export class Telemetry {
   private raw = new Map<string, ChannelValue>();
   private interp = new Map<string, Interp>();
   private inputListeners = new Set<(a: InputAction) => void>();
+  private configListeners = new Set<(ui: UiConfig) => void>();
   private ws: WebSocket | undefined;
   private retryMs = 500;
 
@@ -96,6 +103,35 @@ export class Telemetry {
     return it.from + (it.to - it.from) * k;
   }
 
+  /** Operate a vehicle control (see ControlMsg). Returns false if the bridge isn't connected. */
+  sendControl(id: string, action: ControlMsg['action'], count?: number): boolean {
+    if (this.ws?.readyState !== WebSocket.OPEN) return false;
+    const msg: ControlMsg = { t: 'control', id, action, ...(count ? { count } : {}) };
+    this.ws.send(JSON.stringify(msg));
+    return true;
+  }
+
+  /** Ask the bridge to change and save UI settings. Returns false if the bridge isn't connected. */
+  sendSettings(patch: SettingsPatch): boolean {
+    if (this.ws?.readyState !== WebSocket.OPEN) return false;
+    const msg: SettingsMsg = { t: 'settings', patch };
+    this.ws.send(JSON.stringify(msg));
+    return true;
+  }
+
+  /** Media transport button (only works with media.source "windows"). */
+  sendMedia(action: MediaAction): boolean {
+    if (this.ws?.readyState !== WebSocket.OPEN) return false;
+    const msg: MediaMsg = { t: 'media', action };
+    this.ws.send(JSON.stringify(msg));
+    return true;
+  }
+
+  onConfig(fn: (ui: UiConfig) => void): () => void {
+    this.configListeners.add(fn);
+    return () => this.configListeners.delete(fn);
+  }
+
   onInput(fn: (a: InputAction) => void): () => void {
     this.inputListeners.add(fn);
     return () => this.inputListeners.delete(fn);
@@ -127,6 +163,9 @@ export class Telemetry {
         break;
       case 'input':
         for (const fn of this.inputListeners) fn(msg.action);
+        break;
+      case 'config':
+        for (const fn of this.configListeners) fn(msg.ui);
         break;
     }
   }

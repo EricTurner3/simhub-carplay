@@ -35,6 +35,8 @@
     display: flex;
     flex-direction: column;
     background: var(--card);
+    backdrop-filter: var(--glass);
+    -webkit-backdrop-filter: var(--glass);
     border-radius: var(--radius);
     overflow: hidden;
   }

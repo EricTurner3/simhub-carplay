@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { GameProfileFile, ProfileInfo, Units } from '@simhub-carplay/shared';
+import type { ChannelMapping, ControlDef, GameProfileFile, ProfileInfo, Units } from '@simhub-carplay/shared';
 
 export interface ResolvedProfile {
   id: string;
@@ -8,8 +8,10 @@ export interface ResolvedProfile {
   short?: string;
   units?: Units;
   currency?: string;
-  /** channel -> SimHub property (nulls already removed) */
-  channels: Record<string, string>;
+  /** channel -> SimHub property or switch cases (nulls already removed) */
+  channels: Record<string, ChannelMapping>;
+  /** control id -> definition (nulls already removed), in display order */
+  controls: Record<string, ControlDef>;
 }
 
 /** Channel every profile must keep: it's how the bridge knows which game is running. */
@@ -48,6 +50,7 @@ export class GameProfiles {
       units: profile.units,
       currency: profile.currency,
       channels: Object.keys(profile.channels),
+      controls: Object.entries(profile.controls).map(([id, def]) => ({ id, ...def })),
     };
   }
 
@@ -64,7 +67,24 @@ export class GameProfiles {
       if (prop === null) delete channels[ch];
       else channels[ch] = prop;
     }
-    if (!channels[GAME_CHANNEL]) throw new Error(`Game profile "${id}" removes the "${GAME_CHANNEL}" channel`);
+    if (typeof channels[GAME_CHANNEL] !== 'string') throw new Error(`Game profile "${id}" removes or switches the "${GAME_CHANNEL}" channel`);
+    for (const [ch, mapping] of Object.entries(channels)) {
+      if (typeof mapping === 'string') continue;
+      const bad = mapping.filter((c) => c.when !== undefined && typeof channels[c.when] !== 'string').map((c) => c.when);
+      if (bad.length) throw new Error(`Game profile "${id}": channel "${ch}" switches on unknown or non-plain channel(s) ${bad.join(', ')}`);
+    }
+
+    const controls = { ...parent?.controls };
+    for (const [ctl, def] of Object.entries(file.controls ?? {})) {
+      if (def === null) delete controls[ctl];
+      else controls[ctl] = def;
+    }
+    // A control whose state channel this game doesn't provide would never show feedback.
+    for (const [ctl, def] of Object.entries(controls)) {
+      const states = [def.state, ...(def.steps ?? []).map((s) => s.state)].filter(Boolean) as string[];
+      const missing = states.filter((s) => !channels[s]);
+      if (missing.length) throw new Error(`Game profile "${id}": control "${ctl}" uses unknown channel(s) ${missing.join(', ')}`);
+    }
 
     return {
       id,
@@ -73,6 +93,7 @@ export class GameProfiles {
       units: file.units ?? parent?.units,
       currency: file.currency ?? parent?.currency,
       channels,
+      controls,
     };
   }
 }

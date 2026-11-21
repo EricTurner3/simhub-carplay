@@ -17,4 +17,9 @@ export interface TelemetrySource {
    * (re)subscribe accordingly.
    */
   setProperties(channels: Record<string, string>): void;
+  /**
+   * Press (down=true) or release a vehicle control. `input` is the SimHub input
+   * name to trigger. Returns false if it couldn't be delivered (e.g. not connected).
+   */
+  control(id: string, input: string, down: boolean): boolean;
 }

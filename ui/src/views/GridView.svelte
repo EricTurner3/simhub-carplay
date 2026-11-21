@@ -5,7 +5,8 @@
   import { current, focusEl, type Dir } from '../lib/focus.ts';
   import AppIcon from '../components/AppIcon.svelte';
 
-  const { view, nav, telemetry } = useApp();
+  const { view, nav, telemetry, cfg } = useApp();
+  const scale = $derived(cfg.ui.appearance.iconScale);
 
   // Dashboard first, then every app the active game supports.
   const tiles = $derived([DASHBOARD, ...availableApps(telemetry)]);
@@ -19,9 +20,43 @@
 
   const rem = () => parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
 
-  // Icons per page follow the available space (4x2 at 1024x600, more on wide screens).
-  const cols = $derived(Math.max(3, Math.floor(width / (13 * rem()))));
-  const rows = $derived(Math.max(1, Math.floor(height / (12.5 * rem()))));
+  // Layout sizes in rem; keep in sync with the styles below.
+  const ICON = 5.4; // .icon width at scale 1
+  const PAD = 0.4; // .app padding
+  const LABEL_GAP = 0.5; // .app gap between icon and name
+  const PAGE_X = 3; // .page left + right padding
+  const PAGE_Y = 1.6; // .page top + bottom padding
+  const MIN_GAP = 0.6; // closest two icons may get before one moves to the next page (--gap)
+
+  let measurer: CanvasRenderingContext2D | null = null;
+  /** Width of the longest app name at the current label size, in rem. */
+  function widestLabel(labelRem: number): number {
+    measurer ??= document.createElement('canvas').getContext('2d');
+    if (!measurer) return ICON;
+    const px = labelRem * rem();
+    measurer.font = `500 ${px}px ${getComputedStyle(document.body).fontFamily}`;
+    return Math.max(...tiles.map((t) => measurer!.measureText(t.name).width)) / rem();
+  }
+
+  // How many icons fit per page. Comfortable spacing (4x2 at 1024x600) is the target;
+  // bigger icons only lose a column/row once neighbours would come closer than MIN_GAP,
+  // and smaller icons let more fit.
+  const grid = $derived.by(() => {
+    const r = rem();
+    const w = width / r;
+    const h = height / r;
+    const labelRem = 0.85 * (0.5 + scale / 2);
+    const cellW = Math.max(ICON * scale, widestLabel(labelRem)) + PAD * 2;
+    const cellH = ICON * scale + LABEL_GAP + labelRem * 1.25 + PAD * 2;
+    const fitCols = Math.floor((w - PAGE_X + MIN_GAP) / (cellW + MIN_GAP));
+    const fitRows = Math.floor((h - PAGE_Y + MIN_GAP) / (cellH + MIN_GAP));
+    const shrink = Math.min(1, scale);
+    const comfyCols = Math.floor(w / (13 * shrink));
+    const comfyRows = Math.floor(h / (12.5 * shrink));
+    return { cols: Math.max(1, Math.min(comfyCols, fitCols)), rows: Math.max(1, Math.min(comfyRows, fitRows)) };
+  });
+  const cols = $derived(grid.cols);
+  const rows = $derived(grid.rows);
   const perPage = $derived(cols * rows);
   const pages = $derived.by(() => {
     const out = [];
@@ -96,7 +131,7 @@
   }
 </script>
 
-<div class="grid-view">
+<div class="grid-view" style:--scale={scale}>
   <div
     class="viewport"
     bind:clientWidth={width}
@@ -142,7 +177,6 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    background: radial-gradient(140% 100% at 50% 0%, #1a1c24 0%, #0a0a0d 70%);
     border-radius: var(--radius);
     overflow: hidden;
   }
@@ -182,11 +216,12 @@
     transform: scale(0.92);
   }
   .icon {
-    width: 5.4rem;
+    width: calc(5.4rem * var(--scale, 1));
     display: block;
   }
   .name {
-    font-size: 0.85rem;
+    /* Labels grow at half the rate of icons so big icons don't get huge text. */
+    font-size: calc(0.85rem * (0.5 + var(--scale, 1) / 2));
     font-weight: 500;
     color: var(--text);
     white-space: nowrap;

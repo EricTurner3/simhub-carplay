@@ -20,6 +20,8 @@ export interface AppModule {
   order: number;
   /** Channels the active game must provide for this app to show up at all. */
   requires?: string[];
+  /** Extra availability check, for apps that depend on more than channels. */
+  available?: (t: Telemetry) => boolean;
   /** Dock shortcut priority (lower first). Omit to keep it out of the dock. */
   dock?: number;
   /** Full-screen body (the header/back button is provided by the shell). */

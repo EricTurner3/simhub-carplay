@@ -10,6 +10,7 @@
  */
 
 import type { ProfileInfo } from './games.ts';
+import type { SettingsPatch, UiConfig } from './config.ts';
 
 export const PROTOCOL_VERSION = 1;
 
@@ -74,15 +75,52 @@ export interface InputMsg {
   action: InputAction;
 }
 
-export type ServerMessage = HelloMsg | SnapshotMsg | DeltaMsg | StatusMsg | ProfileMsg | InputMsg;
+/** UI settings changed (by any screen's Settings app). Clients adopt the runtime-editable parts. */
+export interface ConfigMsg {
+  t: 'config';
+  ui: UiConfig;
+}
+
+export type ServerMessage = HelloMsg | SnapshotMsg | DeltaMsg | StatusMsg | ProfileMsg | InputMsg | ConfigMsg;
 
 // ---- client -> server -------------------------------------------------------
 
-/** Reserved for future use (media controls, settings changes). Backends may ignore. */
+/**
+ * Operate a vehicle control from the active profile's `controls`.
+ * tap = press + release (`count` taps in a row, max 5, for cycle controls);
+ * press/release = hold, for momentary controls. Unknown ids are ignored, so a
+ * client can only ever trigger what the profile allows.
+ */
+export interface ControlMsg {
+  t: 'control';
+  id: string;
+  action: 'tap' | 'press' | 'release';
+  count?: number;
+}
+
+/**
+ * Change UI settings. The backend validates and saves them, then broadcasts a
+ * ConfigMsg to every client (including the sender).
+ */
+export interface SettingsMsg {
+  t: 'settings';
+  patch: SettingsPatch;
+}
+
+export const MEDIA_ACTIONS = ['playPause', 'next', 'previous'] as const;
+export type MediaAction = (typeof MEDIA_ACTIONS)[number];
+
+/** Media transport button. Only does something when the backend reads media itself (media.source "windows"). */
+export interface MediaMsg {
+  t: 'media';
+  action: MediaAction;
+}
+
+/** Reserved for future use. Backends may ignore. */
 export interface CommandMsg {
   t: 'cmd';
   name: string;
   args?: Record<string, unknown>;
 }
 
-export type ClientMessage = CommandMsg;
+export type ClientMessage = ControlMsg | SettingsMsg | MediaMsg | CommandMsg;

@@ -5,14 +5,19 @@ import { WebSocketServer, WebSocket } from 'ws';
 import {
   PROTOCOL_VERSION,
   isInputAction,
+  MEDIA_ACTIONS,
   type AppConfig,
   type ClientConfig,
   type ProfileInfo,
+  type ClientMessage,
   type ProfileMsg,
   type ServerMessage,
   type StatusMsg,
 } from '@simhub-carplay/shared';
 import type { TelemetryStore } from './store.ts';
+import type { ControlRunner } from './controls.ts';
+import type { SettingsStore } from './settings.ts';
+import { ART_PATH, type WindowsMedia } from './media/windowsMedia.ts';
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -21,6 +26,7 @@ const MIME: Record<string, string> = {
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
+  '.jpg': 'image/jpeg',
   '.woff2': 'font/woff2',
   '.ico': 'image/x-icon',
 };
@@ -37,6 +43,8 @@ export interface BridgeServer {
  *   GET  /config.json         client part of config.json
  *   WS   /ws                  telemetry protocol (see shared/src/protocol.ts)
  *   POST /api/input/<action>  inject a navigation action (testing / external triggers)
+ *   POST /api/control/<id>    tap a vehicle control (?count=n); handy while mapping it in SimHub
+ *   GET  /media/art           current album art (media.source "windows")
  *   GET  /*                   built UI from ui/dist
  */
 export function startServer(
@@ -45,6 +53,9 @@ export function startServer(
   backend: string,
   uiDist: string,
   initialProfile: ProfileInfo,
+  controls: ControlRunner,
+  settings: SettingsStore,
+  media: WindowsMedia | null,
 ): BridgeServer {
   let status: StatusMsg = { t: 'status', upstream: 'connecting' };
   let profileMsg: ProfileMsg = { t: 'profile', profile: initialProfile };
@@ -70,6 +81,18 @@ export function startServer(
       return;
     }
 
+    if (url.pathname === `/${ART_PATH}`) {
+      const art = media?.art();
+      if (!art) {
+        res.writeHead(404).end();
+        return;
+      }
+      // The URL carries ?v=<art id>, so a given URL always means the same image.
+      res.writeHead(200, { 'content-type': art.mime, 'cache-control': 'public, max-age=86400' });
+      res.end(art.data);
+      return;
+    }
+
     const input = /^\/api\/input\/(\w+)$/.exec(url.pathname);
     if (input && req.method === 'POST') {
       const action = input[1];
@@ -79,6 +102,14 @@ export function startServer(
       }
       broadcast({ t: 'input', action });
       res.writeHead(204).end();
+      return;
+    }
+
+    const control = /^\/api\/control\/(\w+)$/.exec(url.pathname);
+    if (control && req.method === 'POST') {
+      const err = controls.handle({ id: control[1], action: 'tap', count: Number(url.searchParams.get('count') ?? 1) });
+      if (err) res.writeHead(409, { 'content-type': 'text/plain' }).end(err);
+      else res.writeHead(204).end();
       return;
     }
 
@@ -125,9 +156,37 @@ export function startServer(
   wss.on('connection', (ws, req) => {
     alive.set(ws, true);
     ws.on('pong', () => alive.set(ws, true));
-    ws.on('message', () => {
-      /* client commands are reserved for later */
+    ws.on('message', (data) => {
+      let msg: ClientMessage;
+      try {
+        msg = JSON.parse(String(data)) as ClientMessage;
+      } catch {
+        return;
+      }
+      if (msg.t === 'settings') {
+        try {
+          const err = settings.apply(msg.patch);
+          if (err) console.warn(`[settings] rejected: ${err}`);
+          // Always broadcast, so a rejected change snaps the sender back to the real value.
+          broadcast({ t: 'config', ui: config.ui });
+        } catch (e) {
+          console.error('[settings]', e);
+        }
+      }
+      if (msg.t === 'media' && (MEDIA_ACTIONS as readonly string[]).includes(msg.action)) {
+        if (!media?.command(msg.action)) console.warn(`[media] ${msg.action}: no Windows media source running`);
+      }
+      if (msg.t === 'control') {
+        try {
+          const err = controls.handle(msg);
+          if (err) console.warn(`[control] ${msg.id}/${msg.action}: ${err}`);
+        } catch (e) {
+          console.error('[control]', e);
+        }
+      }
     });
+    // A held control (horn) must not stay down if the screen drops off the network.
+    ws.on('close', () => controls.releaseAll());
     send(ws, { t: 'hello', v: PROTOCOL_VERSION, backend });
     send(ws, status);
     send(ws, profileMsg);
