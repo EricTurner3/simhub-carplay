@@ -1,0 +1,64 @@
+{
+  "bridge": {
+    "host": "127.0.0.1",
+    "port": 8099,
+    "source": "propertyServer",
+    "broadcastHz": 30
+  },
+
+  "propertyServer": {
+    "host": "127.0.0.1",
+    "port": 18082,
+    "reconnectMs": 2000
+  },
+
+  "mock": {
+    "game": "AssettoCorsa",
+    "updateHz": 60,
+    "driveSeconds": 75,
+    "parkedSeconds": 15
+  },
+
+  "ui": {
+    "units": "auto",
+    "interpolate": {
+      "speedKmh": "linear",
+      "rpm": "linear",
+      "trackPct": "wrap"
+    },
+    "autoSwitch": {
+      "enabled": true,
+      "parkedBelowKmh": 3,
+      "parkedAfterMs": 2500
+    },
+    "input": {
+      "keyboard": {
+        "up": ["ArrowUp"],
+        "down": ["ArrowDown"],
+        "left": ["ArrowLeft"],
+        "right": ["ArrowRight"],
+        "ok": ["Enter"],
+        "back": ["Escape", "Backspace"],
+        "toggleView": [" ", "g"],
+        "home": ["h"],
+        "debug": ["F2"]
+      },
+      "gamepad": {
+        "idContains": "",
+        "buttons": {
+          "up": [12],
+          "down": [13],
+          "left": [14],
+          "right": [15],
+          "ok": [0],
+          "back": [1],
+          "toggleView": [3],
+          "home": []
+        },
+        "hatAxis": null,
+        "repeatDelayMs": 400,
+        "repeatRateMs": 120
+      }
+    }
+  }
+}

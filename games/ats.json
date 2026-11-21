@@ -1,0 +1,9 @@
+{
+  "id": "ats",
+  "name": "American Truck Simulator",
+  "short": "ATS",
+  "match": ["ATS"],
+  "extends": "scs-trucks",
+  "units": "mph",
+  "currency": "$"
+}

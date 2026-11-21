@@ -1,0 +1,9 @@
+{
+  "id": "ets2",
+  "name": "Euro Truck Simulator 2",
+  "short": "ETS2",
+  "match": ["ETS2", "EuroTruckSimulator2"],
+  "extends": "scs-trucks",
+  "units": "kmh",
+  "currency": "€"
+}

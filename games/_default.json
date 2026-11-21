@@ -1,0 +1,62 @@
+{
+  "id": "_default",
+  "name": "Generic",
+  "channels": {
+    "game": "DataCorePlugin.CurrentGame",
+    "gameRunning": "dcp.GameRunning",
+    "gamePaused": "dcp.GamePaused",
+
+    "speedKmh": "dcp.gd.SpeedKmh",
+    "rpm": "dcp.gd.Rpms",
+    "maxRpm": "dcp.gd.CarSettings_MaxRPM",
+    "gear": "dcp.gd.Gear",
+
+    "trackPct": "DataCorePlugin.GameData.TrackPositionPercent",
+    "lap": "DataCorePlugin.GameData.CurrentLap",
+    "totalLaps": "DataCorePlugin.GameData.TotalLaps",
+    "position": "DataCorePlugin.GameData.Position",
+    "opponents": "DataCorePlugin.GameData.OpponentsCount",
+    "deltaSec": "PersistantTrackerPlugin.SessionBestLiveDeltaSeconds",
+    "lastLap": "DataCorePlugin.GameData.LastLapTime",
+    "bestLap": "DataCorePlugin.GameData.BestLapTime",
+    "flag": "DataCorePlugin.GameData.Flag_Name",
+    "inPit": "dcp.gd.IsInPit",
+
+    "brakeBias": "DataCorePlugin.GameData.BrakeBias",
+    "tcLevel": "DataCorePlugin.GameData.TCLevel",
+    "absLevel": "dcp.gd.ABSLevel",
+    "engineMap": "DataCorePlugin.GameData.EngineMap",
+
+    "fuel": "dcp.gd.Fuel",
+    "maxFuel": "DataCorePlugin.GameData.MaxFuel",
+    "fuelPct": "DataCorePlugin.GameData.FuelPercent",
+    "fuelUnit": "DataCorePlugin.GameData.FuelUnit",
+    "fuelLapsLeft": "DataCorePlugin.Computed.Fuel_RemainingLaps",
+    "fuelPerLap": "DataCorePlugin.Computed.Fuel_LitersPerLap",
+
+    "tyreTempFL": "DataCorePlugin.GameData.TyreTemperatureFrontLeft",
+    "tyreTempFR": "DataCorePlugin.GameData.TyreTemperatureFrontRight",
+    "tyreTempRL": "DataCorePlugin.GameData.TyreTemperatureRearLeft",
+    "tyreTempRR": "DataCorePlugin.GameData.TyreTemperatureRearRight",
+    "tyrePresFL": "DataCorePlugin.GameData.TyrePressureFrontLeft",
+    "tyrePresFR": "DataCorePlugin.GameData.TyrePressureFrontRight",
+    "tyrePresRL": "DataCorePlugin.GameData.TyrePressureRearLeft",
+    "tyrePresRR": "DataCorePlugin.GameData.TyrePressureRearRight",
+    "tyreWearFL": "DataCorePlugin.GameData.TyreWearFrontLeft",
+    "tyreWearFR": "DataCorePlugin.GameData.TyreWearFrontRight",
+    "tyreWearRL": "DataCorePlugin.GameData.TyreWearRearLeft",
+    "tyreWearRR": "DataCorePlugin.GameData.TyreWearRearRight",
+    "tyrePressureUnit": "DataCorePlugin.GameData.TyrePressureUnit",
+
+    "temperatureUnit": "DataCorePlugin.GameData.TemperatureUnit",
+    "oilTemp": "DataCorePlugin.GameData.OilTemperature",
+    "waterTemp": "DataCorePlugin.GameData.WaterTemperature",
+    "oilPressure": "DataCorePlugin.GameData.OilPressure",
+    "oilPressureUnit": "DataCorePlugin.GameData.OilPressureUnit",
+    "airTemp": "DataCorePlugin.GameData.AirTemperature",
+    "roadTemp": "DataCorePlugin.GameData.RoadTemperature",
+
+    "media.title": "MediaInfo.Title",
+    "media.artist": "MediaInfo.Artist"
+  }
+}
