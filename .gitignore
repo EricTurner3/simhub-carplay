@@ -2,3 +2,6 @@ node_modules/
 dist/
 *.log
 .DS_Store
+
+# Map data generated from game files (npm run maps:build)
+data/

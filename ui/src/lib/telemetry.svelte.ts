@@ -7,6 +7,7 @@ import {
   type InterpolationKind,
   type MediaAction,
   type MediaMsg,
+  type NavRoute,
   type ProfileInfo,
   type ServerMessage,
   type SettingsMsg,
@@ -43,6 +44,8 @@ export class Telemetry {
   slow = $state<ChannelMap>({});
   /** Active game profile: which game is running and which channels it provides. */
   profile = $state<ProfileInfo | null>(null);
+  /** Truck-game navigation route (ATS/ETS2), or null. Progress is in the nav.stepIndex / nav.maneuverDistM channels. */
+  route = $state.raw<NavRoute | null>(null);
 
   private channelSet = new Set<string>();
 
@@ -69,6 +72,7 @@ export class Telemetry {
     ws.onmessage = (ev) => this.onMessage(JSON.parse(ev.data as string) as ServerMessage);
     ws.onclose = () => {
       this.conn.ws = 'closed';
+      this.route = null;
       this.conn.upstream = 'disconnected';
       setTimeout(() => this.connect(), this.retryMs);
       this.retryMs = Math.min(5000, this.retryMs * 2);
@@ -166,6 +170,9 @@ export class Telemetry {
         break;
       case 'config':
         for (const fn of this.configListeners) fn(msg.ui);
+        break;
+      case 'route':
+        this.route = msg.route;
         break;
     }
   }

@@ -1,4 +1,6 @@
-import type { AppConfig } from '@simhub-carplay/shared';
+import polyline from '@mapbox/polyline';
+import { fromWgs84ToAtsCoords, fromWgs84ToEts2Coords } from '@truckermudgeon/map/projections';
+import type { AppConfig, NavRoute } from '@simhub-carplay/shared';
 import type { SourceSink, TelemetrySource } from './source.ts';
 
 /**
@@ -9,6 +11,10 @@ import type { SourceSink, TelemetrySource } from './source.ts';
  * It reports `game` = config mock.game and emits every channel any profile might
  * use (racing and truck). The bridge keeps only the active profile's channels,
  * exactly as with real data, so `--game ATS` gives job/truck data and no laps.
+ *
+ * As a truck game it also has a world position: it starts at a Sacramento depot
+ * with a job to Reno, and drives along whatever route the bridge's navigation
+ * computes (followRoute), so the map and turn-by-turn work without the game.
  */
 
 const TRACK_M = 4200;
@@ -31,6 +37,10 @@ const GEAR_TOP_KMH = [72, 112, 152, 192, 228, 262];
 const TANK_L = 110;
 /** Truck job deadline: Thu 22:30 in game minutes. */
 const JOB_DEADLINE = 3 * 1440 + 22 * 60 + 30;
+const TRUCK_MAX = 100 / 3.6; // m/s
+/** Truck start (ATS, Sacramento) and job destination, as company + city tokens. */
+const TRUCK_START = { x: -109998.5, z: -13185.3 };
+const TRUCK_DEST = { company: 'ed_mkt', city: 'reno' };
 
 type Phase = 'driving' | 'stopping' | 'parked';
 
@@ -52,9 +62,54 @@ export class MockSource implements TelemetrySource {
   // Vehicle controls operated from the UI (see control()).
   private lightStep = 2; // 0 off, 1 parking, 2 low beam
   private toggles: Record<string, boolean> = { electric: true, engine: true, liftAxle: true };
+  // Truck world position, following the navigation route when there is one.
+  private readonly truck: boolean;
+  private readonly ats: boolean; // the start point and job are in ATS
+  private pos = { ...TRUCK_START, heading: 0 };
+  private path: { x: number; z: number; s: number }[] = [];
+  private pathS = 0;
 
   constructor(private cfg: AppConfig['mock']) {
     this.phaseT = 2; // start rolling soon after launch
+    this.truck = /^(ATS|ETS2|EuroTruckSimulator2)$/.test(cfg.game);
+    this.ats = cfg.game === 'ATS';
+  }
+
+  /** Drive along this route from its start (a reroute starts where the truck is). */
+  followRoute(route: NavRoute | null): void {
+    this.path = [];
+    this.pathS = 0;
+    if (!route) return;
+    const toGame = route.map === 'usa' ? fromWgs84ToAtsCoords : fromWgs84ToEts2Coords;
+    let s = 0;
+    for (const step of route.steps) {
+      for (const lonLat of polyline.decode(step.geometry)) {
+        const [x, z] = toGame(lonLat as [number, number]);
+        const prev = this.path.at(-1);
+        if (prev) s += Math.hypot(x - prev.x, z - prev.z);
+        if (!prev || s > prev.s) this.path.push({ x, z, s });
+      }
+    }
+  }
+
+  private moveAlongPath(d: number): void {
+    const path = this.path;
+    if (path.length < 2) return;
+    this.pathS += d;
+    if (this.pathS >= path[path.length - 1].s) {
+      // Arrived: back to the start; navigation reroutes from there.
+      this.path = [];
+      this.pos = { ...TRUCK_START, heading: 0 };
+      return;
+    }
+    let i = 1;
+    while (path[i].s < this.pathS) i++;
+    const a = path[i - 1];
+    const b = path[i];
+    const k = (this.pathS - a.s) / (b.s - a.s);
+    // SCS heading: 0..1 counter-clockwise from north (-z).
+    const bearing = Math.atan2(b.x - a.x, -(b.z - a.z));
+    this.pos = { x: a.x + (b.x - a.x) * k, z: a.z + (b.z - a.z) * k, heading: (((-bearing / (2 * Math.PI)) % 1) + 1) % 1 };
   }
 
   start(sink: SourceSink): void {
@@ -95,7 +150,7 @@ export class MockSource implements TelemetrySource {
       }
     }
 
-    const allowed = this.phase === 'driving' ? this.allowedSpeed(this.dist) : 0;
+    const allowed = this.phase === 'driving' ? Math.min(this.allowedSpeed(this.dist), this.truck ? TRUCK_MAX : V_MAX) : 0;
     if (this.v < allowed) {
       const accel = 9.5 * (1 - this.v / V_MAX) + 0.5;
       this.v = Math.min(allowed, this.v + accel * dt);
@@ -119,6 +174,7 @@ export class MockSource implements TelemetrySource {
     this.delta = Math.max(-2, Math.min(2, this.delta));
 
     this.routeLeftM = Math.max(0, this.routeLeftM - this.v * dt);
+    if (this.ats) this.moveAlongPath(this.v * dt);
     this.fuel = Math.max(0, this.fuel - (0.0002 * this.v + 0.002) * dt);
     this.gameMinutes += (dt * 19) / 60; // SCS default time scale
 
@@ -232,6 +288,14 @@ export class MockSource implements TelemetrySource {
     set('job.plannedDistanceKm', 412);
     set('job.deadlineMinutes', JOB_DEADLINE);
     set('job.remainingMinutes', Math.round(JOB_DEADLINE - this.gameMinutes));
+    if (this.ats) {
+      set('job.destinationCompanyId', TRUCK_DEST.company);
+      set('job.destinationCityId', TRUCK_DEST.city);
+      set('pos.x', Math.round(this.pos.x * 100) / 100);
+      set('pos.y', 10);
+      set('pos.z', Math.round(this.pos.z * 100) / 100);
+      set('pos.heading', Math.round(this.pos.heading * 10000) / 10000);
+    }
     set('nav.distanceM', Math.round(this.routeLeftM));
     set('nav.timeSec', Math.round(this.routeLeftM / 24));
     set('nav.speedLimitKph', kmh > 100 ? 105 : 89);

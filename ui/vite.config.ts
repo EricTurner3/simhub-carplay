@@ -21,6 +21,7 @@ export default defineConfig({
       '/config.json': bridge,
       '/api': bridge,
       '/media': bridge,
+      '/maps': bridge,
       '/ws': { target: bridge.replace('http', 'ws'), ws: true },
     },
   },

@@ -9,4 +9,5 @@ export default {
   order: 10,
   dock: 1,
   screen: MapScreen,
+  fullBleed: true,
 } satisfies AppModule;

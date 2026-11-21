@@ -81,7 +81,92 @@ export interface ConfigMsg {
   ui: UiConfig;
 }
 
-export type ServerMessage = HelloMsg | SnapshotMsg | DeltaMsg | StatusMsg | ProfileMsg | InputMsg | ConfigMsg;
+/**
+ * Truck-game navigation route (ATS/ETS2), computed by the backend from the job
+ * destination. Sent on connect and whenever the route changes; null = no route.
+ * Progress along it arrives as ordinary channels (NAV_CHANNELS).
+ */
+export interface RouteMsg {
+  t: 'route';
+  route: NavRoute | null;
+}
+
+export type ServerMessage = HelloMsg | SnapshotMsg | DeltaMsg | StatusMsg | ProfileMsg | InputMsg | ConfigMsg | RouteMsg;
+
+// ---- truck-game navigation ---------------------------------------------------
+
+/**
+ * Maneuver kinds. Values match truckermudgeon/maps' BranchType, so the backend
+ * passes them through unchanged.
+ */
+export const Turn = {
+  Through: 0,
+  SlightLeft: 1,
+  Left: 2,
+  SharpLeft: 3,
+  UTurnLeft: 4,
+  SlightRight: 11,
+  Right: 12,
+  SharpRight: 13,
+  UTurnRight: 14,
+  /** Roundabout exits, by position: bottom-right, right, top-right, top, top-left, left, bottom-left, bottom. */
+  RoundBR: 21,
+  RoundR: 22,
+  RoundTR: 23,
+  RoundT: 24,
+  RoundTL: 25,
+  RoundL: 26,
+  RoundBL: 27,
+  RoundB: 28,
+  RoundExit: 29,
+  Merge: -1,
+  Depart: -2,
+  Arrive: -3,
+  Ferry: -4,
+} as const;
+export type TurnKind = (typeof Turn)[keyof typeof Turn];
+
+export interface NavStep {
+  /** Maneuver at the start of this step. */
+  turn: TurnKind;
+  /** Where the maneuver happens. */
+  lonLat: [number, number];
+  /** Road name / exit / destination text, e.g. "I-84 W" or "Exit 27A". */
+  text?: string;
+  /** Sprite name of a road shield or POI icon (from the generated spritesheet). */
+  icon?: string;
+  roundaboutExit?: number;
+  /** Lane guidance, left to right; `active` = lanes to use. */
+  lanes?: { turns: TurnKind[]; active?: TurnKind }[];
+  /** The maneuver right after this one, when it comes quickly. */
+  then?: TurnKind;
+  /** From this maneuver to the next one. */
+  distanceM: number;
+  durationS: number;
+  /** Google encoded polyline (precision 5) from this maneuver to the next. */
+  geometry: string;
+}
+
+export interface NavRoute {
+  id: string;
+  map: 'usa' | 'europe';
+  steps: NavStep[];
+  distanceM: number;
+  durationS: number;
+}
+
+/**
+ * Derived navigation channels the backend adds for truck games (alongside the
+ * profile's own channels):
+ *  - nav.stepIndex     index into NavRoute.steps of the NEXT maneuver (null: no route)
+ *  - nav.maneuverDistM metres to that maneuver
+ */
+export const NAV_CHANNELS = ['nav.stepIndex', 'nav.maneuverDistM'] as const;
+
+/** GET /maps/index.json: which games have generated map tiles. */
+export interface MapIndex {
+  games: ('ats' | 'ets2')[];
+}
 
 // ---- client -> server -------------------------------------------------------
 

@@ -1,7 +1,12 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node"]
+    "types": ["node"],
+    // The navigation worker imports truckermudgeon/maps source (vendor/maps),
+    // which tsc checks too: it uses iterator helpers (ESNext lib) and an
+    // `import X = ns.Y` alias that verbatimModuleSyntax rejects.
+    "lib": ["ESNext"],
+    "verbatimModuleSyntax": false
   },
   "include": ["src"]
 }

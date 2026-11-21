@@ -11,6 +11,7 @@ import {
   type ProfileInfo,
   type ClientMessage,
   type ProfileMsg,
+  type RouteMsg,
   type ServerMessage,
   type StatusMsg,
 } from '@simhub-carplay/shared';
@@ -18,10 +19,12 @@ import type { TelemetryStore } from './store.ts';
 import type { ControlRunner } from './controls.ts';
 import type { SettingsStore } from './settings.ts';
 import { ART_PATH, type WindowsMedia } from './media/windowsMedia.ts';
+import { serveMapFile } from './mapFiles.ts';
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
@@ -35,6 +38,8 @@ export interface BridgeServer {
   setStatus(upstream: StatusMsg['upstream'], detail?: string): void;
   /** Game profile changed: tell clients, then resync them (the channel set changed). */
   setProfile(profile: ProfileInfo): void;
+  /** Truck navigation route changed (null: none). */
+  setRoute(route: RouteMsg['route']): void;
   close(): void;
 }
 
@@ -45,6 +50,7 @@ export interface BridgeServer {
  *   POST /api/input/<action>  inject a navigation action (testing / external triggers)
  *   POST /api/control/<id>    tap a vehicle control (?count=n); handy while mapping it in SimHub
  *   GET  /media/art           current album art (media.source "windows")
+ *   GET  /maps/*              generated map tiles and sprites (see mapFiles.ts)
  *   GET  /*                   built UI from ui/dist
  */
 export function startServer(
@@ -56,9 +62,11 @@ export function startServer(
   controls: ControlRunner,
   settings: SettingsStore,
   media: WindowsMedia | null,
+  mapsDir: string,
 ): BridgeServer {
   let status: StatusMsg = { t: 'status', upstream: 'connecting' };
   let profileMsg: ProfileMsg = { t: 'profile', profile: initialProfile };
+  let routeMsg: RouteMsg = { t: 'route', route: null };
 
   const clientConfig: ClientConfig = {
     protocolVersion: PROTOCOL_VERSION,
@@ -113,6 +121,7 @@ export function startServer(
       return;
     }
 
+    if (await serveMapFile(mapsDir, url.pathname, req, res)) return;
     await serveStatic(url.pathname, res);
   }
 
@@ -191,6 +200,7 @@ export function startServer(
     send(ws, status);
     send(ws, profileMsg);
     send(ws, { t: 'snapshot', ts: Date.now(), d: store.snapshot() });
+    send(ws, routeMsg);
     console.log(`[ws] client connected from ${req.socket.remoteAddress} (${wss.clients.size} total)`);
     ws.on('close', () => console.log(`[ws] client disconnected (${wss.clients.size} total)`));
   });
@@ -234,6 +244,10 @@ export function startServer(
       profileMsg = { t: 'profile', profile };
       broadcast(profileMsg);
       broadcast({ t: 'snapshot', ts: Date.now(), d: store.snapshot() });
+    },
+    setRoute(route) {
+      routeMsg = { t: 'route', route };
+      broadcast(routeMsg);
     },
     close() {
       clearInterval(flush);

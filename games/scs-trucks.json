@@ -87,6 +87,19 @@
     "nav.timeSec": "DataCorePlugin.GameRawData.NavigationValues.NavigationTimeSeconds",
     "nav.speedLimitKph": "DataCorePlugin.GameRawData.NavigationValues.SpeedLimit.Kph",
 
+    "job.destinationCityId": [
+      { "when": "job.onCarJob", "prop": "DataCorePlugin.GameRawData.CarJobValues.CityDestinationId" },
+      { "prop": "DataCorePlugin.GameRawData.JobValues.CityDestinationId" }
+    ],
+    "job.destinationCompanyId": [
+      { "when": "job.onCarJob", "prop": "DataCorePlugin.GameRawData.CarJobValues.CompanyDestinationId" },
+      { "prop": "DataCorePlugin.GameRawData.JobValues.CompanyDestinationId" }
+    ],
+    "pos.x": "DataCorePlugin.GameRawData.TruckValues.CurrentValues.PositionValue.Position.X",
+    "pos.y": "DataCorePlugin.GameRawData.TruckValues.CurrentValues.PositionValue.Position.Y",
+    "pos.z": "DataCorePlugin.GameRawData.TruckValues.CurrentValues.PositionValue.Position.Z",
+    "pos.heading": "DataCorePlugin.GameRawData.TruckValues.CurrentValues.PositionValue.Orientation.Heading",
+
     "world.gameMinutes": "DataCorePlugin.GameRawData.CommonValues.GameTime.Minutes",
     "world.restStopMinutes": "DataCorePlugin.GameRawData.CommonValues.NextRestStop.Minutes",
     "world.timeScale": "DataCorePlugin.GameRawData.CommonValues.Scale",

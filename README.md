@@ -1,10 +1,14 @@
 # simhub-carplay
+![live test UI](./docs/carplay_splitview.png)
+As seen for ATS while running a Job
+![live test UI](./docs/carplay_splitview2.png)
+As seen with Assetto Corsa, in race
 
 A CarPlay-style center-screen infotainment UI for a sim rig, driven by live SimHub telemetry.
 It runs in a browser (Edge/Chromium kiosk or a SimHub dashboard web component) on the same
 Windows PC as SimHub.
 
-This is infotainment only. Shift lights and anything hard-real-time stay on the SimHub → CAN path.
+**AI Disclaimer**: Claude Opus 5.5 was used extensively for this project.
 
 ```
  SimHub ──(Property Server plugin, TCP 18082)──► bridge (Node) ──WebSocket /ws──► UI (Svelte)
@@ -23,6 +27,9 @@ This is infotainment only. Shift lights and anything hard-real-time stay on the 
 
 - Windows, Node.js 20+ (developed on Node 26)
 - For real data: SimHub with the [SimHub Property Server](https://github.com/pre-martin/SimHubPropertyServer) plugin
+- For the ATS/ETS2 map and turn-by-turn: WSL (Ubuntu) and a one-time `npm run maps:build` (see
+  [Truck map and navigation](#truck-map-and-navigation-atsets2)). Clone with `--recurse-submodules`,
+  or run `git submodule update --init` (the map code lives in `vendor/maps`)
 
 ## Quick start (mock data, no game)
 
@@ -135,7 +142,7 @@ The Property Server pushes at most **10 Hz**. The UI interpolates the channels l
 map puck still move smoothly.
 
 ## Apps (`ui/src/apps/<id>/`)
-
+![app view](./docs/carplay_apps.png)
 Each folder is one app, and the registry discovers it automatically. `index.ts` default-exports
 an `AppModule` ([ui/src/apps/types.ts](ui/src/apps/types.ts)):
 
@@ -162,8 +169,27 @@ export default {
   tile only where the game supports it (see Vehicle), and use `units()` from the context for
   display units. The building blocks are `lib/kit` (Tile, Section, Bar) and `lib/format.ts`.
 
-Current apps: Map, Now Playing (live title/artist from SimHub's `MediaInfo`), Race Info, Job, Fuel,
-Tyres, Vehicle (assists, engine, brakes, drivetrain and damage, adapting per game), and Settings.
+### Current Apps
+![app view](./docs/carplay_map.png)
+Map
+
+![app view](./docs/carplay_now_playing.png)
+Now Playing (live title/artist from SimHub's `MediaInfo`, album art from Windows PS script)
+
+![app view](./docs/carplay_raceinfo.png)
+Race Info
+
+![app view](./docs/carplay_ats_job.png)
+Job
+
+![app view](./docs/carplay_fuel.png)
+Fuel
+
+![app view](./docs/carplay_vehicle.png)
+Vehicle
+
+![app view](./docs/carplay_settings.png)
+Settings
 
 ### Dock game indicator
 
@@ -221,6 +247,10 @@ The bridge runs on the gaming PC next to SimHub. The display device only needs a
 3. The wheel is plugged into the PC, so the Pi's browser can't see it through the Gamepad API.
    Touch works. Wheel-button navigation from the Pi needs the backend input path
    (`/api/input/<action>`, or wheel buttons read through SimHub, which is planned).
+4. The ATS/ETS2 map uses MapLibre, which needs WebGL 2. A Pi 4 or 5 has it once hardware
+   acceleration is on (check `chrome://gpu`). A Pi 3 or Zero doesn't, so the UI falls back to a
+   lighter 2D canvas map: map areas, roads, the route and the truck, but no labels, icons or
+   buildings. Add `?map=2d` to the URL to force the fallback on any device.
 
 ### Edge kiosk on the second screen
 
@@ -315,6 +345,68 @@ With `windows`, the bridge starts a hidden Windows PowerShell 5.1 helper
 restarts it if it exits; it exits when the bridge does. It polls every `media.pollMs` and
 replaces the game profiles' `media.*` mappings. Nothing extra to install or run.
 
+## Truck map and navigation (ATS/ETS2)
+
+For ATS and ETS2, the Map card shows a heading-up world map that follows the truck. While a job
+is active, the Drive card in the split view becomes a turn-by-turn card with the next maneuver,
+the distance to it, the exit number or road name, lane guidance and a "then" hint. The map
+shows the route, the speed limit sign and an ETA / time-remaining pill.
+
+It is built on [truckermudgeon/maps](https://github.com/truckermudgeon/maps) (GPL-3.0, like this
+repo), pinned as a git submodule in `vendor/maps`:
+
+- **Tiles**: its parser and generator turn your installed game files into PMTiles. MapLibre GL
+  renders them with our own dark style ([ui/src/lib/map/style.ts](ui/src/lib/map/style.ts)).
+- **Routing**: the bridge runs its routing and guidance code in a worker thread
+  ([bridge/src/nav/](bridge/src/nav/)). When the job destination changes, it computes a route
+  ("fastest") from the truck to the destination company. It then tracks progress along it and
+  reroutes if you leave it.
+
+### Building the map data
+
+```sh
+npm run maps:build                    # ATS (default)
+wsl bash scripts/maps/build.sh ets2   # or: ats | ets2 | all
+```
+
+This runs [scripts/maps/build.sh](scripts/maps/build.sh) inside WSL, because tippecanoe has no
+Windows build. The first run installs Node and builds tippecanoe per-user under `~/.local`
+(no sudo needed). It then clones truckermudgeon/maps at the submodule's commit into
+`~/.cache/simhub-carplay` and parses the game, which takes a few minutes. Output goes to
+`data/maps/` (gitignored, about 450 MB for ATS, mostly routing JSON). Steps whose output already
+exists are skipped; use `FORCE=1` to rebuild, e.g. after a map DLC or game update. The game
+directories default to the `D:` Steam library; override them with `ATS_DIR=/mnt/...` /
+`ETS2_DIR=...`.
+
+The bridge serves the data at `/maps/*` (with HTTP Range, as PMTiles needs). The routing
+worker starts when a truck game with data is detected, and loading takes about 3 s. Without the
+data, the Map card says so and the Drive card stays.
+
+Map labels use free glyphs from `fonts.openmaptiles.org`, so they need internet access.
+
+### What comes from where
+
+| Shown | Source |
+| --- | --- |
+| Truck position / heading | SimHub `TruckValues.CurrentValues.PositionValue.*` (`pos.*` channels) |
+| Route, maneuvers, lanes, distance to next maneuver | computed by the bridge (truckermudgeon/maps) |
+| ETA, time and distance remaining | the game's own GPS (`nav.timeSec`, `nav.distanceM`) |
+| Speed limit | the game (`nav.speedLimitKph`) |
+
+Known limits:
+- The route is computed independently of the in-game GPS. SCS telemetry doesn't expose the
+  GPS route, so the two can occasionally differ.
+- Turn-by-turn only works during a job. A destination set on the in-game GPS isn't in
+  telemetry. Special transport and mod companies get no route.
+- Maneuver distances are real metres driven (game world units). The ETA pill uses the game's
+  values as reported. Whether `NavigationTimeSeconds` is game or real time still needs to be
+  checked in a live game (the ETA clock assumes game time).
+- Upstream banners carry text only (road names, "Exit 27A"), so there are no highway shields in
+  the maneuver card yet. Shields do show on the map.
+
+In mock mode (`npm run dev:ats`), the truck starts at a Sacramento depot with a job to Reno and
+drives along the computed route.
+
 ## WebSocket protocol (v1)
 
 Defined in [shared/src/protocol.ts](shared/src/protocol.ts). Frames are JSON text on `/ws`, keyed
@@ -329,6 +421,9 @@ by channel name:
 {"t":"delta","ts":1700000000033,"d":{"speedKmh":87.4,"rpm":5120}}       // changed channels only
 {"t":"input","action":"ok"}                             // navigation from the backend
 {"t":"config","ui":{...}}                               // UI settings changed (Settings app)
+{"t":"route","route":{"map":"usa","steps":[{"turn":12,"text":"Exit 27A","distanceM":850,"geometry":"..."}]}}
+                                                        // truck navigation route (null = none); progress arrives
+                                                        // as channels nav.stepIndex / nav.maneuverDistM
 
 // client -> server
 {"t":"control","id":"hazards","action":"tap"}           // also "press"/"release" (momentary), "count" for cycles
@@ -384,7 +479,9 @@ bridge/src/games.ts         loads/merges game profiles (extends, null = remove)
 bridge/src/server.ts        HTTP (static UI, /config.json, /api/input, /api/control) + WebSocket
 bridge/src/controls.ts      vehicle controls -> SimHub input triggers (allow-list, tap/hold, queueing)
 bridge/src/store.ts         latest values + dirty set -> deltas
-bridge/src/sources/mock.ts            synthetic laps, racing + truck channels
+bridge/src/mapFiles.ts      /maps/*: generated tiles, sprites, index (Range requests)
+bridge/src/nav/             ATS/ETS2 routing worker (truckermudgeon/maps) + main-thread wrapper
+bridge/src/sources/mock.ts            synthetic laps, racing + truck channels (as ATS, drives the nav route)
 bridge/src/sources/propertyServer.ts  TCP client for the Property Server (diffed resubscribes)
 ui/src/App.svelte           shell, input dispatch, view transitions
 ui/src/apps/                plug-in apps + registry (see "Apps")
@@ -396,7 +493,10 @@ ui/src/lib/input.ts         keyboard + Gamepad API polling
 ui/src/lib/focus.ts         spatial (knob) navigation
 ui/src/lib/frameloop.ts     single requestAnimationFrame loop
 ui/src/views/               SplitView, GridView (paged), AppScreen (app shell)
-ui/src/components/          Dock, MapCard (canvas), DriveCard, DebugOverlay
+ui/src/components/          Dock, MapCard (canvas / WorldMap), DriveCard, ManeuverCard, TurnIcon, DebugOverlay
+ui/src/lib/map/             MapLibre style for the truck maps, map data index
+scripts/maps/build.sh       map data pipeline (runs in WSL)
+vendor/maps                 truckermudgeon/maps (git submodule)
 ```
 
 How rendering works: fast channels (speed, RPM, track position) never touch Svelte state. Components
@@ -414,14 +514,16 @@ are ordinary reactive state.
 | `npm start` | Bridge with the source from `config.json`, serving the built UI |
 | `npm run start:mock` | Same, forced to mock data |
 | `npm run check` | Type-check shared, bridge and UI (`tsc` + `svelte-check`) |
+| `npm run maps:build` | Generate ATS map tiles + routing data in WSL (see above) |
 
 ## Roadmap
 
-- **Map**: real track outlines and opponent positions for racing. For ATS/ETS2, a world map with
-  turn-by-turn navigation on [truckermudgeon/maps](https://github.com/truckermudgeon/maps).
 - **Now Playing**: artwork and working transport buttons (SimHub `SystemControl.Media*`
   actions, or an SMTC helper)
 - **Race info**: penalties, next-corner callouts
 - **More game profiles**: ACC, iRacing, Forza (FH5/FH6)… each is one JSON file
 - **Phase 2**: SimHub C# plugin hosting the same WebSocket protocol, with derived state and
   server-side wheel input
+
+## Credits
+- [truckermudgeon's ATS/ETS Maps](https://github.com/truckermudgeon/maps)

@@ -35,7 +35,10 @@
     "interpolate": {
       "speedKmh": "linear",
       "rpm": "linear",
-      "trackPct": "wrap"
+      "trackPct": "wrap",
+      "pos.x": "linear",
+      "pos.z": "linear",
+      "pos.heading": "wrap"
     },
     "autoSwitch": {
       "enabled": true,

@@ -2,13 +2,16 @@
   import { useApp } from '../lib/context.ts';
   import { appById, isAvailable } from '../apps/registry.ts';
 
-  /** Shell around an app: header with back button, then the app's own screen. */
+  /** Shell around an app: header with back button, then the app's own screen (or just the screen, for fullBleed apps). */
   let { id }: { id: string } = $props();
   const { view, telemetry } = useApp();
   const app = $derived(appById(id));
   const available = $derived(app ? isAvailable(app, telemetry) : false);
 </script>
 
+{#if app?.fullBleed && available}
+  <div class="screen bleed"><app.screen /></div>
+{:else}
 <div class="screen">
   <header>
     <button data-nav class="back" onclick={() => view.back()} aria-label="Back">
@@ -28,6 +31,7 @@
     {/if}
   </div>
 </div>
+{/if}
 
 <style>
   .screen {
@@ -39,6 +43,9 @@
     -webkit-backdrop-filter: var(--glass);
     border-radius: var(--radius);
     overflow: hidden;
+  }
+  .bleed {
+    position: relative;
   }
   header {
     display: flex;

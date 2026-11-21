@@ -2,11 +2,17 @@
   import { onMount } from 'svelte';
   import { useApp } from '../lib/context.ts';
   import { onFrame } from '../lib/frameloop.ts';
+  import { hasWebGL2 } from '../lib/map/index.ts';
+  import { worldMap } from '../lib/map/world.svelte.ts';
+  import { eta as etaOf } from '../lib/nav.ts';
+  import WorldMap from './WorldMap.svelte';
+  import FallbackMap from './FallbackMap.svelte';
+  import SpeedLimitSign from './SpeedLimitSign.svelte';
 
   /**
-   * Placeholder track map: a fictional circuit drawn on canvas with the player
-   * puck placed by `trackPct` (0..1 around the lap). Real track outlines and
-   * opponent positions come later.
+   * Racing: placeholder track map, a fictional circuit drawn on canvas with the
+   * player puck placed by `trackPct` (0..1 around the lap).
+   * Truck games (ATS/ETS2): the world map (WorldMap) with speed limit and ETA.
    */
   let { onclick, label = true }: { onclick?: () => void; label?: boolean } = $props();
   const { telemetry } = useApp();
@@ -183,21 +189,36 @@
   }
 
   const lap = $derived(telemetry.slow.lap);
-  // Games without lap position (e.g. truck sims) get a world map later; until then, a placeholder.
   const circuit = $derived(!telemetry.profile || telemetry.has('trackPct'));
+
+  const wm = worldMap(telemetry);
+  const game = $derived(wm.game);
+  const built = $derived(wm.built);
+  const world = $derived(wm.ready);
+  // In-game GPS: arrival on the game clock, time left.
+  const eta = $derived(world ? etaOf(telemetry.slow) : null);
 </script>
 
 <button class="card map" data-nav data-nav-default {onclick} aria-label="Map" bind:this={wrap}>
   <canvas bind:this={canvas} class:hidden={!circuit}></canvas>
-  {#if !circuit}
+  {#if world && game}
+    {#if hasWebGL2}<WorldMap {game} />{:else}<FallbackMap {game} />{/if}
+    <div class="sign"><SpeedLimitSign size={1.35} /></div>
+    {#if eta}
+      <div class="eta tabular">
+        {#if eta.arrival}<span><b>{eta.arrival}</b> ETA</span>{/if}
+        <span class="left">{eta.left.value} {eta.left.unit === 'hr' ? 'hrs' : 'min'}</span>
+      </div>
+    {/if}
+  {:else if !circuit && (game === null || built !== null)}
     <div class="placeholder">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20z" /><path d="M9 4v13.5M15 6.5V20" />
       </svg>
-      <span>World map coming soon</span>
+      <span>{game ? 'Map data not built yet: run npm run maps:build' : 'No map for this game yet'}</span>
     </div>
   {/if}
-  {#if label}
+  {#if label && !world}
     <div class="label">
       <span class="title">{circuit ? 'Track Map' : 'Map'}</span>
       {#if circuit && typeof lap === 'number'}<span class="lap tabular">Lap {lap}</span>{/if}
@@ -237,6 +258,33 @@
   }
   .placeholder svg {
     width: 3.5rem;
+  }
+  .sign {
+    position: absolute;
+    top: 0.7rem;
+    right: 0.7rem;
+  }
+  .eta {
+    position: absolute;
+    left: 0.6rem;
+    right: 0.6rem;
+    bottom: 0.6rem;
+    display: flex;
+    justify-content: space-around;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.55rem 0.9rem;
+    border-radius: 0.7rem;
+    background: rgba(40, 40, 44, 0.92);
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+  .eta b {
+    font-weight: 700;
+  }
+  .eta .left {
+    color: var(--green);
+    font-weight: 700;
   }
   .label {
     position: absolute;

@@ -5,7 +5,11 @@
   "workspaces": [
     "shared",
     "bridge",
-    "ui"
+    "ui",
+    "vendor/maps/packages/libs/base",
+    "vendor/maps/packages/libs/io",
+    "vendor/maps/packages/libs/map",
+    "vendor/maps/packages/apis/navigation"
   ],
   "scripts": {
     "dev": "concurrently -k -n bridge,ui -c cyan,magenta \"npm:dev:bridge\" \"npm:dev:ui\"",
@@ -16,7 +20,8 @@
     "start:mock": "npm run start -w bridge -- --mock",
     "check": "npm run check -w shared && npm run check -w bridge && npm run check -w ui",
     "dev:ats": "concurrently -k -n bridge,ui -c cyan,magenta \"npm run dev -w bridge -- --mock --game ATS\" \"npm:dev:ui\"",
-    "start:mock:ats": "npm run start -w bridge -- --mock --game ATS"
+    "start:mock:ats": "npm run start -w bridge -- --mock --game ATS",
+    "maps:build": "wsl bash scripts/maps/build.sh"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { useApp } from '../lib/context.ts';
   import { onFrame } from '../lib/frameloop.ts';
+  import SpeedLimitSign from './SpeedLimitSign.svelte';
 
   /**
    * Live speed / gear / RPM. Speed and RPM are interpolated and written straight
@@ -12,10 +13,6 @@
   const { telemetry, units } = useApp();
 
   const mph = $derived(units() === 'mph');
-  // Navigation speed limit (truck games); 0 means "no limit known".
-  const limitKph = $derived(telemetry.has('nav.speedLimitKph') ? Number(telemetry.slow['nav.speedLimitKph'] ?? 0) : 0);
-  // US limits are posted in 5 mph steps; the SDK reports km/h.
-  const limit = $derived(limitKph <= 0 ? 0 : mph ? Math.round((limitKph * 0.621371) / 5) * 5 : Math.round(limitKph));
   let speedEl: HTMLElement;
   let rpmFill: HTMLElement;
   let rpmText: HTMLElement;
@@ -49,11 +46,8 @@
 <button class="card drive" data-nav {onclick} aria-label="Driving info">
   <div class="head">
     <span class="title">Drive</span>
-    {#if limit}
-      <span class="limit" class:us={mph} aria-label={`Speed limit ${limit}`}>
-        {#if mph}<small>LIMIT</small>{/if}{limit}
-      </span>
-    {:else if telemetry.has('deltaSec') && typeof delta === 'number'}
+    <SpeedLimitSign size={0.95} />
+    {#if telemetry.has('deltaSec') && typeof delta === 'number'}
       <span class="delta tabular" class:gain={delta < 0} class:loss={delta > 0}>
         {delta > 0 ? '+' : ''}{delta.toFixed(2)}
       </span>
@@ -108,36 +102,6 @@
   .delta.loss {
     background: rgba(255, 69, 58, 0.18);
     color: var(--red);
-  }
-  /* Speed limit sign: round red ring (km/h), white rectangle (mph). */
-  .limit {
-    min-width: 2.1rem;
-    height: 2.1rem;
-    border-radius: 50%;
-    border: 0.25rem solid var(--red);
-    background: #fff;
-    color: #111;
-    display: grid;
-    place-items: center;
-    font-weight: 800;
-    font-size: 0.85rem;
-    line-height: 1;
-  }
-  .limit.us {
-    border-radius: 0.3rem;
-    border: 0.12rem solid #111;
-    box-shadow: 0 0 0 0.12rem #fff;
-    height: 2.4rem;
-    min-width: 1.9rem;
-    padding: 0.1rem 0.15rem;
-    font-size: 0.95rem;
-    align-content: center;
-    gap: 0.05rem;
-  }
-  .limit small {
-    font-size: 0.42rem;
-    font-weight: 800;
-    letter-spacing: 0.02em;
   }
   .main {
     flex: 1;

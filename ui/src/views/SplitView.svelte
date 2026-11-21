@@ -3,11 +3,14 @@
   import { cardIn } from '../lib/transitions.ts';
   import MapCard from '../components/MapCard.svelte';
   import DriveCard from '../components/DriveCard.svelte';
+  import ManeuverCard from '../components/ManeuverCard.svelte';
   import { activeCardApp } from '../apps/registry.ts';
 
   const { view, telemetry } = useApp();
   // Lower-right card is contributed by apps (Now Playing by default, Job while delivering).
   const cardApp = $derived(activeCardApp(telemetry));
+  // Navigating (truck games): the next maneuver replaces the Drive card.
+  const navigating = $derived(telemetry.route !== null && typeof telemetry.slow['nav.stepIndex'] === 'number');
 </script>
 
 <div class="split">
@@ -15,7 +18,11 @@
     <MapCard onclick={() => view.open('map')} />
   </div>
   <div class="slot drive" in:cardIn|global={{ delay: 70 }}>
-    <DriveCard onclick={() => view.open(telemetry.has('lap') ? 'race' : 'vehicle')} />
+    {#if navigating}
+      <ManeuverCard onclick={() => view.open('map')} />
+    {:else}
+      <DriveCard onclick={() => view.open(telemetry.has('lap') ? 'race' : 'vehicle')} />
+    {/if}
   </div>
   <div class="slot np" in:cardIn|global={{ delay: 140 }}>
     {#if cardApp?.card}

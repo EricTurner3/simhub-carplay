@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import { NAV_CHANNELS } from '@simhub-carplay/shared';
 import { loadConfig, repoRoot } from './config.ts';
 import { GAME_CHANNEL, GameProfiles, type ResolvedProfile } from './games.ts';
 import { MEDIA_CHANNELS, WindowsMedia } from './media/windowsMedia.ts';
@@ -10,6 +11,7 @@ import { startServer } from './server.ts';
 import { MockSource } from './sources/mock.ts';
 import { PropertyServerSource } from './sources/propertyServer.ts';
 import type { TelemetrySource } from './sources/source.ts';
+import { Navigation } from './nav/navigation.ts';
 
 const { config, path } = loadConfig();
 console.log(`[bridge] config: ${path}`);
@@ -30,19 +32,28 @@ const isMedia = (ch: string) => media !== null && ch.startsWith('media.');
 
 /** The profile's channel -> property map, minus what another source provides. */
 const sourceChannels = (p: ResolvedProfile) => Object.fromEntries(Object.entries(p.channels).filter(([ch]) => !isMedia(ch)));
-const allChannels = () => [...Object.keys(sourceChannels(profile)), ...mediaChannels];
+// Truck games with generated map data get turn-by-turn navigation (derived nav.* channels).
+const mapsDir = resolve(repoRoot, 'data/maps');
+const nav = new Navigation(mapsDir, { set: (ch, v) => store.set(ch, v), get: (ch) => store.get(ch) }, (route) => {
+  server.setRoute(route);
+  if (source instanceof MockSource) source.followRoute(route);
+});
+const derivedChannels = (p: ResolvedProfile): string[] => [...mediaChannels, ...(nav.supports(p.id) ? NAV_CHANNELS : [])];
+
+const allChannels = () => [...Object.keys(sourceChannels(profile)), ...derivedChannels(profile)];
 function profileInfo() {
   const info = games.info(profile, game);
-  return { ...info, channels: [...new Set([...info.channels, ...mediaChannels])] };
+  return { ...info, channels: [...new Set([...info.channels, ...derivedChannels(profile)])] };
 }
 
 const store = new TelemetryStore(allChannels());
 const mux = new ChannelMux((channel, value) => store.set(channel, value));
 const controls = new ControlRunner(config.controls, source, () => profile.controls);
 const settings = new SettingsStore(path, config.ui);
-const server = startServer(config, store, source.name, resolve(repoRoot, 'ui/dist'), profileInfo(), controls, settings, media);
+const server = startServer(config, store, source.name, resolve(repoRoot, 'ui/dist'), profileInfo(), controls, settings, media, mapsDir);
 source.setProperties(mux.setChannels(sourceChannels(profile)));
 media?.start();
+nav.setProfile(profile.id);
 
 /** The running game changed: swap the channel set and resubscribe. */
 function switchGame(next: string | null) {
@@ -64,6 +75,7 @@ function switchGame(next: string | null) {
   }
   source.setProperties(props);
   server.setProfile(profileInfo());
+  nav.setProfile(profile.id);
   console.log(`[bridge] game: ${next ?? 'none'} -> profile "${profile.id}" (${Object.keys(profile.channels).length} channels)`);
 }
 
@@ -93,6 +105,7 @@ source.start({
 function shutdown() {
   source.stop();
   media?.stop();
+  nav.stop();
   server.close();
   setTimeout(() => process.exit(0), 200).unref();
 }

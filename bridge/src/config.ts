@@ -37,6 +37,8 @@ export function loadConfig(argv = process.argv.slice(2)): { config: AppConfig; p
   config.media = { ...DEFAULT_MEDIA, ...partial.media };
   const appearance = { ...DEFAULT_APPEARANCE, ...config.ui.appearance };
   config.ui.appearance = { ...appearance, custom: { ...DEFAULT_APPEARANCE.custom, ...appearance.custom } };
+  // World position (truck games' map) moves smoothly too.
+  config.ui.interpolate = { 'pos.x': 'linear', 'pos.z': 'linear', 'pos.heading': 'wrap', ...config.ui.interpolate };
 
   const game = arg('--game');
   if (game) config.mock.game = game;

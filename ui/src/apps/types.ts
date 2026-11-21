@@ -27,6 +27,11 @@ export interface AppModule {
   /** Full-screen body (the header/back button is provided by the shell). */
   screen: Component;
   /**
+   * Edge-to-edge: no header or padding, the screen fills the whole app area
+   * (e.g. the map). Back still works from the knob/keys and the dock.
+   */
+  fullBleed?: boolean;
+  /**
    * Optional widget for the split view's lower-right slot. The available card
    * with the highest priority whose `when` passes is shown.
    */
