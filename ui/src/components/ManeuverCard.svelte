@@ -147,4 +147,27 @@
     width: 1.3rem;
     height: 1.3rem;
   }
+
+  /* Short slot (three-row dashboard on a small screen). */
+  @container slot (max-height: 13.5rem) {
+    .maneuver {
+      padding: 0.7rem 0.9rem;
+      gap: 0.25rem;
+    }
+    .arrow {
+      width: 2.8rem;
+      height: 2.8rem;
+    }
+    .dist {
+      font-size: 1.9rem;
+    }
+    .road {
+      font-size: 1.25rem;
+      -webkit-line-clamp: 1;
+      line-clamp: 1;
+    }
+    .sub {
+      display: none;
+    }
+  }
 </style>

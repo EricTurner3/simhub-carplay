@@ -4,16 +4,19 @@
   import MapCard from '../components/MapCard.svelte';
   import DriveCard from '../components/DriveCard.svelte';
   import ManeuverCard from '../components/ManeuverCard.svelte';
+  import GaugeCard from '../components/GaugeCard.svelte';
   import { activeCardApp } from '../apps/registry.ts';
 
-  const { view, telemetry } = useApp();
+  const { view, telemetry, cfg } = useApp();
+  // 'gauges': a third row of radial gauges under the app card.
+  const gauges = $derived(cfg.ui.appearance.dashboard === 'gauges');
   // Lower-right card is contributed by apps (Now Playing by default, Job while delivering).
   const cardApp = $derived(activeCardApp(telemetry));
   // Navigating (truck games): the next maneuver replaces the Drive card.
   const navigating = $derived(telemetry.route !== null && typeof telemetry.slow['nav.stepIndex'] === 'number');
 </script>
 
-<div class="split">
+<div class="split" class:gauges>
   <div class="slot map" in:cardIn|global>
     <MapCard onclick={() => view.open('map')} />
   </div>
@@ -29,6 +32,12 @@
       {#key cardApp.id}<cardApp.card.component />{/key}
     {/if}
   </div>
+  {#if gauges}
+    <div class="slot gauge-row" in:cardIn|global={{ delay: 210 }}>
+      <!-- The Drive card already shows speed and RPM. -->
+      <GaugeCard hide={navigating ? [] : ['speed', 'rpm']} />
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -45,6 +54,8 @@
   .slot {
     min-width: 0;
     min-height: 0;
+    /* Lets cards compact themselves in the shorter three-row slots. */
+    container: slot / size;
   }
   .map {
     grid-area: map;
@@ -55,6 +66,16 @@
   .np {
     grid-area: np;
   }
+  .gauge-row {
+    grid-area: gauges;
+  }
+  .split.gauges {
+    grid-template-rows: 1.2fr 1fr 0.9fr;
+    grid-template-areas:
+      'map drive'
+      'map np'
+      'map gauges';
+  }
 
   /* Widescreen (e.g. 1920x720): three columns side by side. */
   @container stage (min-aspect-ratio: 2.1 / 1) {
@@ -62,6 +83,12 @@
       grid-template-columns: 1.7fr 1fr 1fr;
       grid-template-rows: 1fr;
       grid-template-areas: 'map drive np';
+    }
+    .split.gauges {
+      grid-template-rows: 1fr 1fr;
+      grid-template-areas:
+        'map drive np'
+        'map drive gauges';
     }
   }
 
@@ -73,6 +100,13 @@
       grid-template-areas:
         'map map'
         'drive np';
+    }
+    .split.gauges {
+      grid-template-rows: 1.4fr 1fr 0.8fr;
+      grid-template-areas:
+        'map map'
+        'drive np'
+        'gauges gauges';
     }
   }
 </style>

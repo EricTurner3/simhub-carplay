@@ -1,5 +1,5 @@
 import { readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { ICON_SCALE_MAX, ICON_SCALE_MIN, type SettingsPatch, type UiConfig } from '@simhub-carplay/shared';
+import { DASHBOARD_LAYOUTS, ICON_SCALE_MAX, ICON_SCALE_MIN, type SettingsPatch, type UiConfig } from '@simhub-carplay/shared';
 
 const UNITS: UiConfig['units'][] = ['auto', 'kmh', 'mph'];
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -60,6 +60,7 @@ function validate(patch: SettingsPatch): string | null {
   if (typeof a !== 'object' || a === null) return 'appearance must be an object';
   if (a.background !== undefined && (typeof a.background !== 'string' || !ID.test(a.background))) return 'bad background id';
   if (a.glass !== undefined && typeof a.glass !== 'boolean') return 'glass must be a boolean';
+  if (a.dashboard !== undefined && !DASHBOARD_LAYOUTS.includes(a.dashboard)) return `dashboard must be one of ${DASHBOARD_LAYOUTS.join(', ')}`;
   if (
     a.iconScale !== undefined &&
     (typeof a.iconScale !== 'number' || !(a.iconScale >= ICON_SCALE_MIN && a.iconScale <= ICON_SCALE_MAX))

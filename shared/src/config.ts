@@ -34,7 +34,12 @@ export interface AppearanceConfig {
   glass: boolean;
   /** Size of the app-grid icons, 1 = default (ICON_SCALE_MIN..ICON_SCALE_MAX). */
   iconScale: number;
+  /** Split-view layout: 'classic' (two cards beside the map) or 'gauges' (three rows, gauges at the bottom). */
+  dashboard: DashboardLayout;
 }
+
+export type DashboardLayout = 'classic' | 'gauges';
+export const DASHBOARD_LAYOUTS: DashboardLayout[] = ['classic', 'gauges'];
 
 export const ICON_SCALE_MIN = 0.6;
 export const ICON_SCALE_MAX = 2;
@@ -44,6 +49,7 @@ export const DEFAULT_APPEARANCE: AppearanceConfig = {
   custom: { angle: 160, from: '#1d2440', to: '#05060a' },
   glass: true,
   iconScale: 1,
+  dashboard: 'classic',
 };
 
 export interface UiConfig {

@@ -14,7 +14,7 @@
 
 {#if limit}
   <span class="limit" class:us={mph} style:font-size={`${size}rem`} aria-label={`Speed limit ${limit}`}>
-    {#if mph}<small>{size > 1.2 ? 'SPEED LIMIT' : 'LIMIT'}</small>{/if}<b>{limit}</b>{#if mph && size > 1.2}<small>MPH</small>{/if}
+    {#if mph}<small>SPEED<br />LIMIT</small>{/if}<b>{limit}</b>
   </span>
 {/if}
 
@@ -45,13 +45,16 @@
     padding: 0.18em 0.2em;
     align-content: center;
     gap: 0.06em;
+    aspect-ratio: 4/5;
   }
   .limit.us b {
-    font-size: 1em;
+    font-size: 2em;
   }
   .limit small {
-    font-size: 0.42em;
-    font-weight: 800;
+    font-size: 0.5em;
+    font-weight: 700;
     letter-spacing: 0.02em;
+    line-height: 1.05;
+    text-align: center;
   }
 </style>

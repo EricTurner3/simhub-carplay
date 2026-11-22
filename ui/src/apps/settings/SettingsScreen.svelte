@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ICON_SCALE_MAX, ICON_SCALE_MIN, type UiConfig } from '@simhub-carplay/shared';
+  import { ICON_SCALE_MAX, ICON_SCALE_MIN, type DashboardLayout, type UiConfig } from '@simhub-carplay/shared';
   import { useApp } from '../../lib/context.ts';
   import { BACKGROUNDS, customCss } from '../../lib/appearance.ts';
 
@@ -20,6 +20,11 @@
     if (save) updateSettings({ appearance: { background: 'custom', custom: { [key]: value } } });
     else look.custom[key] = value;
   }
+
+  const LAYOUT_OPTIONS: { id: DashboardLayout; label: string; hint: string }[] = [
+    { id: 'classic', label: 'Classic', hint: 'Two cards' },
+    { id: 'gauges', label: 'Gauges', hint: 'Cards + gauge row' },
+  ];
 
   const STEP = 0.1;
   const clampScale = (v: number) => Math.round(Math.min(ICON_SCALE_MAX, Math.max(ICON_SCALE_MIN, v)) * 10) / 10;
@@ -49,6 +54,24 @@
         >
           {opt.label}
           {#if opt.id === 'auto'}<small>{units() === 'mph' ? 'Imperial' : 'Metric'}</small>{/if}
+        </button>
+      {/each}
+    </div>
+  </section>
+
+  <section>
+    <h2>Dashboard</h2>
+    <div class="segmented two" role="radiogroup" aria-label="Dashboard layout">
+      {#each LAYOUT_OPTIONS as opt (opt.id)}
+        <button
+          data-nav
+          role="radio"
+          aria-checked={look.dashboard === opt.id}
+          class:on={look.dashboard === opt.id}
+          onclick={() => updateSettings({ appearance: { dashboard: opt.id } })}
+        >
+          {opt.label}
+          <small>{opt.hint}</small>
         </button>
       {/each}
     </div>
@@ -201,6 +224,9 @@
     padding: 0.3rem;
     border-radius: 0.9rem;
     background: var(--card-2);
+  }
+  .segmented.two {
+    grid-template-columns: repeat(2, 1fr);
   }
   .segmented button {
     padding: 0.6rem 0.4rem;
