@@ -2,6 +2,7 @@
   import { ICON_SCALE_MAX, ICON_SCALE_MIN, type DashboardLayout, type UiConfig } from '@simhub-carplay/shared';
   import { useApp } from '../../lib/context.ts';
   import { BACKGROUNDS, customCss } from '../../lib/appearance.ts';
+  import { perf, setLite } from '../../lib/perf.svelte.ts';
 
   const { view, telemetry, ui, cfg, units, updateSettings } = useApp();
   const p = $derived(telemetry.profile);
@@ -168,6 +169,11 @@
     >
       <span class="label">Frosted glass cards<small>Turn off if the screen stutters</small></span>
       <span class="switch" class:on={look.glass}></span>
+    </button>
+
+    <button data-nav class="toggle" role="switch" aria-checked={perf.lite} onclick={() => setLite(!perf.lite)}>
+      <span class="label">Lite mode<small>This screen only: no blur or animations, 30fps, for older tablets</small></span>
+      <span class="switch" class:on={perf.lite}></span>
     </button>
   </section>
 

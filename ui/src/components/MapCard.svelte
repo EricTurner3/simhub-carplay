@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { useApp } from '../lib/context.ts';
   import { onFrame } from '../lib/frameloop.ts';
+  import { canvasDpr } from '../lib/perf.svelte.ts';
   import { hasWebGL2 } from '../lib/map/index.ts';
   import { worldMap } from '../lib/map/world.svelte.ts';
   import { eta as etaOf } from '../lib/nav.ts';
@@ -79,7 +80,7 @@
     let dirty = true;
 
     const ro = new ResizeObserver(() => {
-      dpr = window.devicePixelRatio || 1;
+      dpr = canvasDpr();
       w = wrap.clientWidth;
       h = wrap.clientHeight;
       canvas.width = Math.round(w * dpr);

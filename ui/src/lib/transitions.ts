@@ -1,7 +1,8 @@
 import { cubicIn, quintOut } from 'svelte/easing';
 import type { TransitionConfig } from 'svelte/transition';
+import { perf } from './perf.svelte.ts';
 
-const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reduced = () => perf.lite || matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** View entering: fade + scale from `from` toward 1. */
 export function viewIn(_node: Element, { from = 1.05, delay = 60, duration = 460 } = {}): TransitionConfig {

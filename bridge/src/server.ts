@@ -27,6 +27,7 @@ const MIME: Record<string, string> = {
   '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -140,9 +141,12 @@ export function startServer(
     try {
       const body = await readFile(file);
       const ext = extname(file);
+      // Only Vite's content-hashed bundles are immutable; index.html, the manifest and icons
+      // keep fixed names and must be revalidated.
+      const hashed = file.startsWith(join(root, 'assets') + sep);
       res.writeHead(200, {
         'content-type': MIME[ext] ?? 'application/octet-stream',
-        'cache-control': ext === '.html' ? 'no-cache' : 'public, max-age=31536000, immutable',
+        'cache-control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache',
       });
       res.end(body);
     } catch {

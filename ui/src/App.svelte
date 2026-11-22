@@ -10,6 +10,7 @@
   import { setAppContext, type AppContext, type UiFlags } from './lib/context.ts';
   import { viewIn, viewOut } from './lib/transitions.ts';
   import { applyAppearance } from './lib/appearance.ts';
+  import { perf } from './lib/perf.svelte.ts';
   import Dock from './components/Dock.svelte';
   import DebugOverlay from './components/DebugOverlay.svelte';
   import SplitView from './views/SplitView.svelte';
@@ -96,6 +97,9 @@
   });
 
   $effect(() => applyAppearance(cfg.ui.appearance));
+  $effect(() => {
+    document.documentElement.classList.toggle('lite', perf.lite);
+  });
 
   onMount(() => {
     telemetry.connect();
@@ -159,6 +163,10 @@
     height: 100%;
     display: flex;
     background: var(--bg-image);
+    /* Edge-to-edge on phones (viewport-fit=cover): keep content clear of notches and the
+       home indicator while the background runs underneath them. */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+      env(safe-area-inset-left);
   }
   .stage {
     position: relative;

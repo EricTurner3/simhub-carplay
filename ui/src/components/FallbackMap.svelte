@@ -3,6 +3,7 @@
   import { gameToLonLat, headingToBearing } from '@simhub-carplay/shared';
   import { useApp } from '../lib/context.ts';
   import { onFrame } from '../lib/frameloop.ts';
+  import { canvasDpr } from '../lib/perf.svelte.ts';
   import { num } from '../lib/format.ts';
   import { decodeRoute, followZoom, remainingRoute, type LonLat } from '../lib/map/route.ts';
   import { C, roadWidthPx, type Game } from '../lib/map/style.ts';
@@ -42,7 +43,7 @@
     let w = 0;
     let h = 0;
     // Full device resolution costs a lot on a Pi; 1.5x is plenty for lines.
-    const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+    const dpr = canvasDpr(1.5);
     const ro = new ResizeObserver(() => {
       w = wrap.clientWidth;
       h = wrap.clientHeight;

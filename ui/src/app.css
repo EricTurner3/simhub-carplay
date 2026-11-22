@@ -29,11 +29,21 @@
   color-scheme: dark;
 }
 
-/* Glass off (Settings): solid cards, no blur. */
-:root.no-glass {
+/* Glass off (Settings), or lite mode (lib/perf.svelte.ts): solid cards, no blur. */
+:root.no-glass,
+:root.lite {
   --card: #1c1c1f;
   --card-2: #26262b;
   --glass: none;
+}
+
+/* Lite mode: nothing that repaints every frame on a weak GPU. */
+:root.lite *,
+:root.lite *::before,
+:root.lite *::after {
+  filter: none !important;
+  transition: none !important;
+  animation: none !important;
 }
 
 * {
