@@ -58,9 +58,15 @@ export function gameToLonLat(map: ScsMap, x: number, z: number): [number, number
 }
 
 /**
- * SCS heading (0..1, counter-clockwise from north) to a compass bearing in
- * degrees (clockwise from north), as MapLibre expects.
+ * SCS heading (0..1, counter-clockwise from game north, -Z) at a game position
+ * to a compass bearing in degrees (clockwise from true north), as MapLibre
+ * expects. Game north only matches true north on the projection's central
+ * meridian; elsewhere the conic projection tilts it by n * (lon - lon0), which
+ * is ~16 degrees on the US west coast, so the road ahead wouldn't point up.
  */
-export function headingToBearing(heading: number): number {
-  return (((-heading * 360) % 360) + 360) % 360;
+export function headingToBearing(map: ScsMap, x: number, z: number, heading: number): number {
+  const p = map === 'usa' ? ATS : ETS2;
+  const [lon] = gameToLonLat(map, x, z);
+  const convergence = (p.n * (lon * rad - p.lon0)) / rad;
+  return (((-heading * 360 + convergence) % 360) + 360) % 360;
 }

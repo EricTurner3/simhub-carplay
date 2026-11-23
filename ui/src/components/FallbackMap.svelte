@@ -73,12 +73,13 @@
       dirty = false;
       drawnAt = now;
 
-      const lonLat = gameToLonLat(game === 'ats' ? 'usa' : 'europe', x, z);
+      const scsMap = game === 'ats' ? 'usa' : 'europe';
+      const lonLat = gameToLonLat(scsMap, x, z);
       if (now - routeAt > 250) {
         routeAt = now;
         routePx = remainingRoute(lines, num(telemetry.get('nav.stepIndex')), lonLat).map(([lon, lat]) => toWorldPx(lon, lat, REF));
       }
-      draw(ctx, tiles, w, h, dpr, toWorldPx(lonLat[0], lonLat[1], REF), headingToBearing(heading), zoom);
+      draw(ctx, tiles, w, h, dpr, toWorldPx(lonLat[0], lonLat[1], REF), headingToBearing(scsMap, x, z, heading), zoom);
     });
 
     return () => {

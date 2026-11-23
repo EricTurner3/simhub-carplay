@@ -107,8 +107,9 @@
       const z = telemetry.sample('pos.z', now);
       const heading = telemetry.sample('pos.heading', now);
       if (x === null || z === null) return;
-      const lonLat = gameToLonLat(game === 'ats' ? 'usa' : 'europe', x, z);
-      const bearing = heading === null ? m.getBearing() : headingToBearing(heading);
+      const scsMap = game === 'ats' ? 'usa' : 'europe';
+      const lonLat = gameToLonLat(scsMap, x, z);
+      const bearing = heading === null ? m.getBearing() : headingToBearing(scsMap, x, z, heading);
 
       const target = followZoom(telemetry.sample('speedKmh', now) ?? 0) + zoomOffset;
       const dt = last ? Math.min(0.1, (now - last) / 1000) : 0;

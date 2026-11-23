@@ -49,9 +49,10 @@ function fuelFrac(t: Telemetry): number | null {
   const v = t.slow;
   const fuel = num(v.fuel);
   const max = num(v.maxFuel);
+  // Prefer Fuel / MaxFuel: SimHub's FuelPercent can be wildly off (e.g. 200%).
   if (fuel !== null && max) return fuel / max;
   const p = num(v.fuelPct);
-  return p === null ? null : p / 100;
+  return p === null ? null : clamp01(p / 100);
 }
 
 function worstDamage(t: Telemetry): number | null {
